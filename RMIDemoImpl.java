@@ -90,12 +90,14 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 	}
 	@Override
 	public List<String> audit(String pubKey) throws RemoteException {
-		ArrayList<String> ledger = new ArrayList<>(50);
+		//ArrayList<String> ledger = new ArrayList<>(50);
 		
+		List<String> output = getAllTransfers(String publicKey)
 		//db.getIncomingPendingTransfers(pubKey);
 		//FIX ME
 		
-		return ledger;
+		//return ledger;
+		return output;
 	}
 	
 }
