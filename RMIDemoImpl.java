@@ -49,12 +49,15 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		if(!verifyKey(src, verification))
 			return "NACK";
 		
-		int balance = db.getBalance(src) - amount;
-		if(balance < 0)
+		int newBalance = db.getBalance(src) - amount;
+		if(newBalance < 0)
 			return "NACK";
 		
-		db.updateBalance(src, balance);
-		db.createPendingLedger(src, dst, amount);
+		
+		db.CreatePendingLedgerAndUpdateBalance(String src, String dst, int amount, int newBalance);
+		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
+		//db.updateBalance(src, balance);
+		//db.createPendingLedger(src, dst, amount);
 		
 		return "ACK";
 	}
@@ -63,8 +66,9 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		if(!verifyKey(dst, verification))
 			return "NACK";
 		
-		db.updateBalance(dst, db.getBalance(dst) + amount);
-		db.createAcceptedLedger(src, dst, amount, id);
+		AcceptTransactionAndUpdateBalance(dst, transaction_id);
+		//db.updateBalance(dst, db.getBalance(dst) + amount);
+		//db.createAcceptedLedger(src, dst, amount, id);
 		
 		return "ACK";
 		
@@ -74,14 +78,15 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		if(!verifyKey(pubKey, verification))
 			return null;
 		
-		ArrayList<String> account = new ArrayList<>(50);
-		String balance = Integer.toString(db.getBalance(pubKey)); 
-		account.add(balance);
+		//ArrayList<String> account = new ArrayList<>(50);  WHY DO WE NEED THIS LIST?
+		//String balance = Integer.toString(db.getBalance(pubKey)); 
+		//account.add(balance);
 		
-		//db.getIncomingPendingTransfers(pubKey);
-		//FIX ME
+		int balance = db.getBalance(pubKey); //returns int
+		List<String> result = db.getIncomingPendingTransfers(pubKey); //returns a list of all pending request
 		
-		return account;
+		
+		//return account;
 	}
 	@Override
 	public List<String> audit(String pubKey) throws RemoteException {
