@@ -46,7 +46,7 @@ class MysqlCon{
 	public void createPendingTransaction(String sendingPK, String receivingPK, int amount) {
 		try {
 			//inserts a pending query that is for both of the parties (can be found by where x=123 or y=123)
-			final String sql = "INSERT into Ledger_accepted(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
+			final String sql = "INSERT into Ledger(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
 			st=con.prepareStatement(sql);  
 			st.setString(1, sendingPK);
 			st.setString(2, receivingPK);
@@ -81,7 +81,7 @@ class MysqlCon{
 	public void CreatePendingLedgerAndUpdateBalance(String PK_source, String PK_destination, int amount, int current_balance) {
 		
 		String sql = "update Accounts set Balance=? where PublicKey=?";
-		final String sql_l = "INSERT into Ledger_accepted(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
+		final String sql_l = "INSERT into Ledger(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
 		//merge two methods in order to ensure that either both or none of them happen. 
 		try {
 			con.setAutoCommit(false);
@@ -121,7 +121,7 @@ class MysqlCon{
 	
 	public List<String> getIncomingPendingTransfers(String publicKey) {
 		List<String> outputList = new ArrayList<>();
-		final String sql_get_pending_tranfers= "select * from Ledger_accepted where PublicKey_recevier=? and status=pending";				
+		final String sql_get_pending_tranfers= "select * from Ledger where PublicKey_recevier=? and status=pending";				
 		try {
 			st=con.prepareStatement(sql_get_pending_tranfers);
 			st.setString(1, publicKey);
@@ -147,7 +147,7 @@ class MysqlCon{
 	
 	public List<String> getAllTransfers(String publicKey) {
 		List<String> transfers = new ArrayList<String>();
-		final String sql="Select * from Ledger_accepted where PublicKey_receiver=? or PublicKey_sender=?";
+		final String sql="Select * from Ledger where PublicKey_receiver=? or PublicKey_sender=?";
 		try {
 			st=con.prepareStatement(sql);
 			st.setString(1, publicKey);
@@ -174,10 +174,10 @@ class MysqlCon{
 	
 	public void AcceptTransactionAndUpdateBalance(String receivingPK, int transactionID) {
 		
-		final String sql = "update Ledger_accepted set status='accepted'"
+		final String sql = "update Ledger set status='accepted'"
 				+ " where TransactionID=? and PublicKey_recevier=?";
 		
-		final String sql3 = "select amount from Ledger_accepted where TransactionID=? and PublicKey_recevier=?";
+		final String sql3 = "select amount from Ledger where TransactionID=? and PublicKey_recevier=?";
 		
 		final String sql2 = "Update Accounts set balance = balance+? where PublicKey=?";
 		int amount = -1;
