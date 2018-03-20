@@ -1,10 +1,12 @@
-import java.sql.*;  
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;  
 
 class MysqlCon{  
 	private Connection con;
 	private PreparedStatement st;
 	private ResultSet rs;
-	private String publicKey;
+	
 	
 	public MysqlCon() {
 		try{  
@@ -22,14 +24,12 @@ class MysqlCon{
 			final String sql = "select * from Accounts where PublicKey= ?";
 			st=con.prepareStatement(sql);  
 			st.setString(1, pK);
-			//st = con.createStatement();
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String publicKey = rs.getString("publicKey");
 				balance = rs.getInt("Balance");
 				System.out.println(" " + publicKey +" "+ balance);  
 				
-				//ønsker å returnere noe sånt som disse over da, men hvordan?
 				}
 		
 			
@@ -43,14 +43,15 @@ class MysqlCon{
 		
 	}
 	
-	public void createPendingLedger(String sendingPK, String receivingPK, int amount) {
+	public void createPendingTransaction(String sendingPK, String receivingPK, int amount) {
 		try {
 			//inserts a pending query that is for both of the parties (can be found by where x=123 or y=123)
-			final String sql = "INSERT into Ledger_pending(PublicKey_sender, PublicKey_recevier, Amount) values (?, ?, ?)";
+			final String sql = "INSERT into Ledger_accepted(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
 			st=con.prepareStatement(sql);  
 			st.setString(1, sendingPK);
 			st.setString(2, receivingPK);
 			st.setInt(3, amount);
+			st.setString(4, "pending");
 			st.executeUpdate();
 			System.out.println("ok");  
 			//how to ensure that an attacker does not execute this many times?? 
@@ -59,6 +60,47 @@ class MysqlCon{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}  
+		
+	}
+	
+	public void createBalance(String PK, int initial_value) {
+		try {
+			final String sql="insert into Accounts(PublicKey, Balance) values (?, ?)";
+			st=con.prepareStatement(sql);
+			st.setInt(2, initial_value);
+			st.setString(1, PK);
+			st.executeUpdate();
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		
+	}
+	
+	
+	public void CreatePendingLedgerAndUpdateBalance(String PK_source, String PK_destination, int amount, int current_balance) {
+		
+		String sql = "update Accounts set Balance=? where PublicKey=?";
+		final String sql_l = "INSERT into Ledger_accepted(PublicKey_sender, PublicKey_recevier, Amount, status) values (?, ?, ?,?)";
+		//merge two methods in order to ensure that either both or none of them happen. 
+		try {
+			con.setAutoCommit(false);
+			st=con.prepareStatement(sql);
+			st.setInt(1, current_balance);
+			st.setString(2, PK_source );
+			st.executeUpdate();
+			
+			st=con.prepareStatement(sql_l);  
+			st.setString(1, PK_source);
+			st.setString(2, PK_destination);
+			st.setInt(3, amount);
+			st.setString(4, "pending");
+			st.executeUpdate();
+			con.commit();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 	
@@ -76,62 +118,100 @@ class MysqlCon{
 		
 		
 	}
-	//must change from string to PublicKey in the input!
-	public void getIncomingPendingTransfers(String publicKey) {
-		final String sql_get_pending_tranfers= "select * from Ledger_pending where PublicKey_recevier=?";				
+	
+	public List<String> getIncomingPendingTransfers(String publicKey) {
+		List<String> outputList = new ArrayList<>();
+		final String sql_get_pending_tranfers= "select * from Ledger_accepted where PublicKey_recevier=? and status=pending";				
 		try {
 			st=con.prepareStatement(sql_get_pending_tranfers);
 			st.setString(1, publicKey);
 			rs=st.executeQuery();
 			System.out.println(rs); 
 			while(rs.next())  {
-				String publicKey_sender = rs.getString("publicKey_sender");
-				String publicKey_recevier = rs.getString("publicKey_recevier");
+				String src = rs.getString("publicKey_sender");
+				String dst = rs.getString("publicKey_recevier");
 				int amount = rs.getInt("Amount");
 				int transaction_id = rs.getInt("TransactionId");
-				System.out.println(" " + publicKey_sender +" "+ " " + publicKey_recevier + " " + amount + " " + transaction_id);  
+				String output = "Sender: " + src + ", Amount: " + amount + ", Transaction ID: " + transaction_id; 
+				outputList.add(output);
 				
 			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}  	
+		}  
+		return outputList;
 		
 		//return (publicKey_sender + publicKey_recevier + " " + amount);	
 	}
+	
+	public List<String> getAllTransfers(String publicKey) {
+		List<String> transfers = new ArrayList<String>();
+		final String sql="Select * from Ledger_accepted where PublicKey_receiver=? or PublicKey_sender=?";
+		try {
+			st=con.prepareStatement(sql);
+			st.setString(1, publicKey);
+			st.setString(2, publicKey);
+			st.executeUpdate();
+			while(rs.next())  { 
+				String publicKey_sender = rs.getString("publicKey_sender");
+				String publicKey_recevier = rs.getString("publicKey_recevier");
+				int amount = rs.getInt("Amount");
+				int transaction_id = rs.getInt("TransactionId");
+				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_recevier+ ", Amount: " + amount + ", Transaction ID: " + transaction_id; 
+				transfers.add(transfer);
+		
+			}
+			} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}  
+		
 		
 	
+		return transfers;
+	}
 	
-	public void createAcceptedLedger(String sendingPK, String receivingPK, int amount, int transactionID) {
-		//also deletes the pending corresponding request 
-		//Q: do we want to keep the transaction ID or create a new one? Here it keeps the old one
-		final String sql = "INSERT into Ledger_accepted(PublicKey_sender, PublicKey_recevier, Amount, TransactionID) values (?, ?, ?, ?)";
-		final String sql_delete = "delete from Ledger_pending where transactionID=?"; 
+	public void AcceptTransactionAndUpdateBalance(String receivingPK, int transactionID) {
 		
+		final String sql = "update Ledger_accepted set status='accepted'"
+				+ " where TransactionID=? and PublicKey_recevier=?";
+		
+		final String sql3 = "select amount from Ledger_accepted where TransactionID=? and PublicKey_recevier=?";
+		
+		final String sql2 = "Update Accounts set balance = balance+? where PublicKey=?";
+		int amount = -1;
 		try {
 			con.setAutoCommit(false);
-			st=con.prepareStatement(sql);  
-			st.setString(1, sendingPK);
-			st.setString(2, receivingPK);
-			st.setInt(3, amount);
-			st.setInt(4, transactionID);
-			st.executeUpdate();
-			System.out.println("Accepted Ledger updated");  
 			
-			st=con.prepareStatement(sql_delete);  
+			st=con.prepareStatement(sql);  
+			//st.setString(1, sendingPK);
+			st.setString(2, receivingPK);
+			//st.setInt(3, amount);
 			st.setInt(1, transactionID);
 			st.executeUpdate();
-			con.commit();
+			System.out.println("Transaction accepted");  
 			
-			//either both or non of these things happen
-		
-		//denne skal kjøres inni receive_amount
-		//har all info fra getIncomingPendingTransfers?
-		//velger den man ønsker å godkjenne via transactionID, så sendes alt inn her
-		//inserts that is for both of the parties (can be found by where x=123 or y=123)
-		
-		
+			st=con.prepareStatement(sql3);
+			st.setInt(1, transactionID);
+			st.setString(2, receivingPK);
+			rs=st.executeQuery(); //this is the amount that will be added to the account of the receiver
+			while(rs.next())  {
+				amount = rs.getInt("Amount");
 			
+			}
+			
+			st=con.prepareStatement(sql2);
+			if (amount!=-1) {
+				st.setInt(1, amount); 		 
+			}
+			
+			st.setString(2, receivingPK);
+			st.executeUpdate(); //this is the amount that will be added to the account of the receiver
+			System.out.println("Money transferred"); 
+			con.commit(); //either all or non of these things happen
+		
+		
 		}catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -140,4 +220,5 @@ class MysqlCon{
 	}
 	
 			}  
+
 
