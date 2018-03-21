@@ -12,5 +12,8 @@ public class RMIDemoClient {
 			System.err.println("Usage: RMIDemoClient <server> <name>");
 		}
 	}
-
+	
+	//SecureRandom nonce = new SecureRandom();
+	//	String Nonce = nonce.toString();
+	//FIX: WHERE TO CREATE THE NONCE?
 }
