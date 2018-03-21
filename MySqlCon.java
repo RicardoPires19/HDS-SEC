@@ -43,6 +43,48 @@ class MysqlCon{
 		
 	}
 	
+	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
+		
+		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
+		
+		
+		try {
+			st=con.prepareStatement(sql);
+			st.setString(1, Nonce);
+			st.setString(2, PublicKey);
+			st.executeUpdate();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	}
+	
+	public boolean checkNonce(String nonce, String PK) {
+		Boolean result = False;
+		final String sql = "select ? from Nonce where PublicKey_sender= ?";
+	
+		
+		
+		try {
+			st=con.prepareStatement(sql);
+			st.setString(1, nonce);
+			st.setString(2, PK);
+			rs=st.executeQuery();
+			if(rs.next())  {
+				result = True;
+			}
+			
+		
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return result;
+		
+	}
+	
 	public void createPendingTransaction(String sendingPK, String receivingPK, int amount) {
 		try {
 			//inserts a pending query that is for both of the parties (can be found by where x=123 or y=123)
