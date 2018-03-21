@@ -45,7 +45,15 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		return "\nServer says: Hi " +name+ "\n";
 	}
 	@Override
-	public String sendAmount(String src, String dst, String verification, int amount) throws RemoteException {
+	public String sendAmount(String src, String dst, String verification, int amount, String nonce) throws RemoteException {
+		if(db.checkNonce(src){
+			return "NACK";
+		}
+		else{
+			db.createNonce(src, nonce);
+			//return "ACK"
+			
+		
 		if(!verifyKey(src, verification))
 			return "NACK";
 		
