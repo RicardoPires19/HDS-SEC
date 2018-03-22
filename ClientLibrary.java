@@ -53,6 +53,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			Sessions.put(pubKey.toString(), 300);
 			return sc.getSecretKey();
 		}
+		//Where to add the creation of an hmac??
 	}
 	
 	public void logout(Key pubKey, String nonce, byte[] encNonce){
@@ -144,10 +145,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 
 
-
-	if(!verifyKey(key, signature, nonce)) { //should take in both signature and the nonce!
-			return "you are not authorized to register"; 
-		}
+	String check = ac.Decrypt(key, signature);
+	if(!nonce.equals(check))
+		return "you are not authorized to register";
 
 	db.addNonce(key, nonce);
 	db.createBalance(key, 100);
