@@ -22,6 +22,8 @@ public class SymetricKeyGenerator {
 		this.cipher = Cipher.getInstance(algorithm);
 	}
 	
+	public SymetricKeyGenerator(){}
+	
 	private byte[] fixSecret(String s, int length) throws UnsupportedEncodingException {
 		if (s.length() < length) {
 			int missingLength = length - s.length();
@@ -30,6 +32,17 @@ public class SymetricKeyGenerator {
 			}
 		}
 		return s.substring(0, length).getBytes("UTF-8");
+	}
+	
+	public void renewKey(String secret, int length, String algorithm){
+		try {
+			byte[] key = new byte[length];
+			key = fixSecret(secret, length);
+			this.secretKey = new SecretKeySpec(key, algorithm);
+			this.cipher = Cipher.getInstance(algorithm);
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public Cipher getSecretKey(){

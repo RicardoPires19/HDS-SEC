@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
@@ -13,8 +14,11 @@ import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 
@@ -23,20 +27,47 @@ import AsymetricEncription.AsymmetricCryptography;
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricCryptography ac;
+	private final SymetricKeyGenerator sc;
 	private final MysqlCon db;
 	private final KeyStore ks;
 	private static final char[] PASSWORD = {'a', 'b'};
+	private Map<String, Integer> Sessions;
 	
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException{
 		super();
+		sc = new SymetricKeyGenerator();
 		ac = new AsymmetricCryptography();
 		db = new MysqlCon();
 		ks = KeyStore.getInstance("JKS");
 		java.io.FileInputStream fis = null;
 	    ks.load(fis, PASSWORD);
+	    Sessions = new HashMap<String, Integer>(20);
 	}
 	
+	public Cipher login(Key pubKey, String nonce, byte[] encNonce){
+		String check = ac.Decrypt(pubKey, encNonce);
+		if(!nonce.equals(check))
+			return null;
+		else{
+			sc.renewKey(nonce, 16, "AES");
+			Sessions.put(pubKey.toString(), 300);
+			return sc.getSecretKey();
+		}
+	}
+	
+	public void logout(Key pubKey, String nonce, byte[] encNonce){
+		String check = ac.Decrypt(pubKey, encNonce);
+		if(!nonce.equals(check))
+			;
+		else{
+			Sessions.remove(pubKey.toString());
+		}
+	}
+	
+	public void Counter(){}
+	
 
+	@SuppressWarnings("unused")
 	private void storeKey(String pubKey, SecretKey clientKey){
 		KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
 		KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(clientKey);
@@ -47,6 +78,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 	}
 	
+	@SuppressWarnings("unused")
 	private SecretKey getKey(String pubKey){
 		try {
 			KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
