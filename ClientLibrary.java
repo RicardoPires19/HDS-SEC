@@ -131,6 +131,35 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public String doCommunicate (String name) throws RemoteException{
 		return "\nServer says: Hi " +name+ "\n";
 	}
+	
+	@Override
+	public String register(String key, String nonce, String signature) throws RemoteException {
+	if(db.checkNonce(nonce, key)){
+		return "This message has already been receiver";
+
+	}
+
+	if(db.checkClient(key)) {
+		return "This public key is already registered";
+	}
+
+
+
+	if(!verifyKey(key, signature, nonce)) { //should take in both signature and the nonce!
+			return "you are not authorized to register"; 
+		}
+
+	db.addNonce(key, nonce);
+	db.createBalance(key, 100);
+	//ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesnt matter, its just implement for the sql
+	//balance.put(key, 5);
+
+	return "\nWelcome " + key+ ", you are now registered";
+	}
+	}
+
+	
+	
 	@Override
 	public String sendAmount(String src, String dst, String verification, int amount, String nonce) throws RemoteException {
 		if(db.checkNonce(nonce, src )){
