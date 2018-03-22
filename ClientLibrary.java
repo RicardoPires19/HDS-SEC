@@ -12,7 +12,6 @@ import java.util.List;
 
 import javax.crypto.NoSuchPaddingException;
 
-import AsymetricEncription.AsymmetricCryptography;
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricCryptography ac;
@@ -54,11 +53,11 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 	@Override
 	public String sendAmount(String src, String dst, String verification, int amount, String nonce) throws RemoteException {
-		if(db.checkNonce(src)){
+		if(db.checkNonce(nonce, src )){
 			return "NACK";
 		}
 		else{
-			db.createNonce(src, nonce);
+			db.addNonce(src, nonce);
 			//return "ACK"
 		}	
 		
@@ -70,7 +69,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			return "NACK";
 		
 		
-		db.CreatePendingLedgerAndUpdateBalance(String src, String dst, int amount, int newBalance);
+		db.CreatePendingLedgerAndUpdateBalance(src, dst, amount, newBalance);
 		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
 		//db.updateBalance(src, balance);
 		//db.createPendingLedger(src, dst, amount);
@@ -83,7 +82,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(!verifyKey(dst, verification))
 			return "NACK";
 		
-		AcceptTransactionAndUpdateBalance(dst, transaction_id);
+		db.AcceptTransactionAndUpdateBalance(dst, id);
 		//db.updateBalance(dst, db.getBalance(dst) + amount);
 		//db.createAcceptedLedger(src, dst, amount, id);
 		
@@ -101,6 +100,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		
 		int balance = db.getBalance(pubKey); //returns int
 		List<String> result = db.getIncomingPendingTransfers(pubKey); //returns a list of all pending request
+		result.add(Integer.toString(balance));
 		
 		
 		return result;
@@ -112,7 +112,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public List<String> audit(String pubKey) throws RemoteException {
 		//ArrayList<String> ledger = new ArrayList<>(50);
 		
-		List<String> output = getAllTransfers(String publicKey)
+		List<String> output = db.getAllTransfers(pubKey);
 		//db.getIncomingPendingTransfers(pubKey);
 		//FIX ME
 		
