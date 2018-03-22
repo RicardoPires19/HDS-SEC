@@ -13,7 +13,9 @@ public class RMIDemoClient {
 		}
 	}
 	
-	//SecureRandom nonce = new SecureRandom();
-	//	String Nonce = nonce.toString();
-	//FIX: WHERE TO CREATE THE NONCE?
+	 public String createNonce() {
+	        	SecureRandom nonce = new SecureRandom();
+	        	String Nonce = nonce.toString();
+	        	return Nonce;
+        }
 }
