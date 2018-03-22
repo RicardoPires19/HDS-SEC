@@ -105,7 +105,7 @@ class MysqlCon{
 		
 	}
 	
-	public void createBalance(String PK, int initial_value) {
+	public void AddClient(String PK, int initial_value) {
 		try {
 			final String sql="insert into Accounts(PublicKey, Balance) values (?, ?)";
 			st=con.prepareStatement(sql);
