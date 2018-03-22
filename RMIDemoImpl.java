@@ -46,13 +46,13 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 	}
 	@Override
 	public String sendAmount(String src, String dst, String verification, int amount, String nonce) throws RemoteException {
-		if(db.checkNonce(src){
+		if(db.checkNonce(src)){
 			return "NACK";
 		}
 		else{
 			db.createNonce(src, nonce);
 			//return "ACK"
-			
+		}	
 		
 		if(!verifyKey(src, verification))
 			return "NACK";
@@ -69,8 +69,9 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		
 		return "ACK";
 	}
+		
 	@Override
-	public String receiveAmount(String src, String dst, String verification, int amount, int id) throws RemoteException {
+	public String receiveAmount(String src, String dst, String verification, int amount, int id, String nonce) throws RemoteException {
 		if(!verifyKey(dst, verification))
 			return "NACK";
 		
@@ -82,7 +83,7 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		
 	}
 	@Override
-	public List<String> checkAccount(String pubKey, String verification) throws RemoteException {
+	public List<String> checkAccount(String pubKey, String verification, String nonce) throws RemoteException {
 		if(!verifyKey(pubKey, verification))
 			return null;
 		
@@ -92,6 +93,9 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		
 		int balance = db.getBalance(pubKey); //returns int
 		List<String> result = db.getIncomingPendingTransfers(pubKey); //returns a list of all pending request
+		
+		
+		return result;
 		
 		
 		//return account;
@@ -107,5 +111,7 @@ public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
 		//return ledger;
 		return output;
 	}
+
+		
 	
 }
