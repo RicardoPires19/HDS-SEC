@@ -62,7 +62,7 @@ class MysqlCon{
 	}
 	
 	public boolean checkNonce(String nonce, String PK) {
-		Boolean result = False;
+		Boolean result = false;
 		final String sql = "select ? from Nonce where PublicKey_sender= ?";
 	
 		
@@ -73,7 +73,7 @@ class MysqlCon{
 			st.setString(2, PK);
 			rs=st.executeQuery();
 			if(rs.next())  {
-				result = True;
+				result = true;
 			}
 			
 		

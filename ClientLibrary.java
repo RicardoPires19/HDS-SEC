@@ -1,28 +1,62 @@
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.KeyStore.SecretKeyEntry;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+
+import AsymetricEncription.AsymmetricCryptography;
 
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricCryptography ac;
 	private final MysqlCon db;
+	private final KeyStore ks;
+	private static final char[] PASSWORD = {'a', 'b'};
 	
-	protected ClientLibrary() throws RemoteException, NoSuchAlgorithmException, NoSuchPaddingException{
+	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException{
 		super();
 		ac = new AsymmetricCryptography();
 		db = new MysqlCon();
+		ks = KeyStore.getInstance("JKS");
+		java.io.FileInputStream fis = null;
+	    ks.load(fis, PASSWORD);
 	}
 	
+
+	private void storeKey(String pubKey, SecretKey clientKey){
+		KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
+		KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(clientKey);
+		try {
+			ks.setEntry(pubKey, skEntry, protParam);
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private SecretKey getKey(String pubKey){
+		try {
+			KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
+			KeyStore.SecretKeyEntry skEntry = (SecretKeyEntry) ks.getEntry("privateKeyAlias", protParam);
+			return skEntry.getSecretKey();
+		} catch (NoSuchAlgorithmException | UnrecoverableEntryException | KeyStoreException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 
 	 public String createNonce() {
 	        	SecureRandom nonce = new SecureRandom();
