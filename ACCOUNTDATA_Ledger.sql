@@ -16,27 +16,31 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `Accounts`
+-- Table structure for table `Ledger`
 --
 
-DROP TABLE IF EXISTS `Accounts`;
+DROP TABLE IF EXISTS `Ledger`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `Accounts` (
-  `PublicKey` varchar(50) NOT NULL,
-  `Balance` int(11) NOT NULL,
-  PRIMARY KEY (`PublicKey`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+CREATE TABLE `Ledger` (
+  `transactionId` int(11) NOT NULL AUTO_INCREMENT,
+  `PublicKey_sender` varchar(50) NOT NULL,
+  `PublicKey_recevier` varchar(50) NOT NULL,
+  `Amount` int(50) NOT NULL,
+  `reg_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `status` varchar(255) NOT NULL,
+  PRIMARY KEY (`transactionId`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `Accounts`
+-- Dumping data for table `Ledger`
 --
 
-LOCK TABLES `Accounts` WRITE;
-/*!40000 ALTER TABLE `Accounts` DISABLE KEYS */;
-INSERT INTO `Accounts` VALUES ('1234',80),('12344',6),('221',70);
-/*!40000 ALTER TABLE `Accounts` ENABLE KEYS */;
+LOCK TABLES `Ledger` WRITE;
+/*!40000 ALTER TABLE `Ledger` DISABLE KEYS */;
+INSERT INTO `Ledger` VALUES (1,'112','221',4,'2018-03-15 16:02:58',''),(2,'132','221',32,'2018-03-16 12:04:20',''),(6,'115','221',3,'2018-03-16 15:28:42',''),(7,'123','221',40,'2018-03-16 19:42:10','accepted'),(8,'123','221',40,'2018-03-19 00:03:22','accepted'),(9,'111','112',111,'2018-03-17 00:06:17','accepted');
+/*!40000 ALTER TABLE `Ledger` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

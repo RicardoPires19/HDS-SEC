@@ -16,27 +16,26 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `Accounts`
+-- Table structure for table `Nonces`
 --
 
-DROP TABLE IF EXISTS `Accounts`;
+DROP TABLE IF EXISTS `Nonces`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `Accounts` (
-  `PublicKey` varchar(50) NOT NULL,
-  `Balance` int(11) NOT NULL,
-  PRIMARY KEY (`PublicKey`)
+CREATE TABLE `Nonces` (
+  `nonce` varchar(255) NOT NULL,
+  `publicKey_sender` varchar(255) NOT NULL,
+  PRIMARY KEY (`nonce`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `Accounts`
+-- Dumping data for table `Nonces`
 --
 
-LOCK TABLES `Accounts` WRITE;
-/*!40000 ALTER TABLE `Accounts` DISABLE KEYS */;
-INSERT INTO `Accounts` VALUES ('1234',80),('12344',6),('221',70);
-/*!40000 ALTER TABLE `Accounts` ENABLE KEYS */;
+LOCK TABLES `Nonces` WRITE;
+/*!40000 ALTER TABLE `Nonces` DISABLE KEYS */;
+/*!40000 ALTER TABLE `Nonces` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
