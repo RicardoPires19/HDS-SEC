@@ -96,7 +96,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	        	return Nonce;
     }
 	
-	private boolean verifyKey(String pubKey, String ver){
+	private boolean verifyKey(String pubKey, String ver){ //dont really understand how this is working??
 		byte[] verification = ver.getBytes();
 		byte[] publicBytes = pubKey.getBytes();
 		
