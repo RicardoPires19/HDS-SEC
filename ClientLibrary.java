@@ -4,6 +4,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
@@ -12,16 +13,23 @@ import java.util.List;
 import javax.crypto.NoSuchPaddingException;
 
 import AsymetricEncription.AsymmetricCryptography;
-public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
+public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricCryptography ac;
 	private final MysqlCon db;
 	
-	protected RMIDemoImpl() throws RemoteException, NoSuchAlgorithmException, NoSuchPaddingException{
+	protected ClientLibrary() throws RemoteException, NoSuchAlgorithmException, NoSuchPaddingException{
 		super();
 		ac = new AsymmetricCryptography();
 		db = new MysqlCon();
 	}
+	
+
+	 public String createNonce() {
+	        	SecureRandom nonce = new SecureRandom();
+	        	String Nonce = nonce.toString();
+	        	return Nonce;
+    }
 	
 	private boolean verifyKey(String pubKey, String ver){
 		byte[] verification = ver.getBytes();
