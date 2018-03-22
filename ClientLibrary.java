@@ -114,6 +114,20 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 	}
 	
+	public String createSignature(String input) {  //input can be both a nonce or a HMAC
+		 PrivateKey privateKey = kg.getPrivateKey();
+	
+	     byte[] data = input.getBytes("UTF8");
+	
+	     Signature sig = Signature.getInstance("SHA1WithRSA");
+	     sig.initSign(privateKey);
+	     sig.update(data);
+	     byte[] signatureBytes = sig.sign();
+	     //System.out.println("Singature:" + new BASE64Encoder().encode(signatureBytes));
+	     String signature = new String(signatureBytes);
+	     return signature;
+	}
+	
 	public String doCommunicate (String name) throws RemoteException{
 		return "\nServer says: Hi " +name+ "\n";
 	}
