@@ -43,6 +43,23 @@ class MysqlCon{
 		
 	}
 	
+		public boolean checkClient(String pk) {
+		boolean returning=False;
+		final String sql = "select * from Account where PublicKey_sender= ?";
+		try {
+			st=con.prepareStatement(sql);
+			st.setString(1, pk);
+			rs=st.executeQuery();
+			if(rs.next())  {
+				returning= True;
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return returning;
+	
 	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
 		
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
