@@ -1,4 +1,4 @@
-package rmidemoapp;
+
 import java.rmi.Naming;
 public class RMIDemoServer {
 	public static void main (String[] args) throws Exception{

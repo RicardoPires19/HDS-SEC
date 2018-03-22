@@ -1,4 +1,4 @@
-package rmidemoapp;
+
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 public class RMIDemoImpl extends UnicastRemoteObject implements RMIDemo{
