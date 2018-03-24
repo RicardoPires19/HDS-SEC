@@ -70,7 +70,19 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 	
 	public void Counter(){}
-	
+
+        
+        public boolean verifyHMAC(byte[] encryptedMessage, Cipher PublicsecretKey, String msg, SecretKey secretPrivateKey) {
+        	
+        	byte[] decryptedHMAC = Decrypt(encryptedMessage); //where do we get the key from??
+        			
+        	byte[] calculated_HMAC = getMac(msg, secretPrivateKey);
+        	
+        	if(decryptedHMAC == calculated_HMAC) {
+        		return true;
+        	}
+        	else return false;
+        }
 
 	@SuppressWarnings("unused")
 	private void storeKey(String pubKey, SecretKey clientKey){
