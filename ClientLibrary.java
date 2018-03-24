@@ -44,16 +44,20 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	    Sessions = new HashMap<String, Integer>(20);
 	}
 	
-	public Cipher login(Key pubKey, String nonce, byte[] encNonce){
-		String check = ac.Decrypt(pubKey, encNonce);
+	public Cipher login(Key pubKey /*, String nonce, byte[] encNonce*/){ //byte[] encNonce is the output of createsignature
+		String nonce = createNonce();
+		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
+		String check = ac.Decrypt(pubKey, encNonce); //server decrypts/veryfies the signature
 		if(!nonce.equals(check))
-			return null;
+			return "Could not authenticate";
 		else{
 			sc.renewKey(nonce, 16, "AES");
 			Sessions.put(pubKey.toString(), 300);
-			return sc.getSecretKey();
+			return sc.getSecretKey(); //does this mean that the server sends the shared session key to the client?
+			//also now the times should start to count down. 
 		}
 		//Where to add the creation of an hmac??
+		//how to differentiate between the client and the server??
 	}
 	
 	public void logout(Key pubKey, String nonce, byte[] encNonce){
@@ -115,7 +119,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 	}
 	
-	public String createSignature(String input) {  //input can be both a nonce or a HMAC
+	public byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
 		 PrivateKey privateKey = kg.getPrivateKey();
 	
 	     byte[] data = input.getBytes("UTF8");
@@ -125,8 +129,8 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	     sig.update(data);
 	     byte[] signatureBytes = sig.sign();
 	     //System.out.println("Singature:" + new BASE64Encoder().encode(signatureBytes));
-	     String signature = new String(signatureBytes);
-	     return signature;
+	     //String signature = new String(signatureBytes);
+	     return signatureBytes;
 	}
 	
 	public String doCommunicate (String name) throws RemoteException{
@@ -161,7 +165,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	
 	
 	@Override
-	public String sendAmount(String src, String dst, String verification, int amount, String nonce) throws RemoteException {
+	public String sendAmount(String src, String dst, int amount, String nonce, String verification) throws RemoteException {
 		if(db.checkNonce(nonce, src )){
 			return "NACK";
 		}
