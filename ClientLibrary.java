@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.Key;
@@ -14,6 +15,8 @@ import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +24,7 @@ import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.security.sasl.AuthenticationException;
 
 import AsymetricEncription.AsymmetricCryptography;
 
@@ -31,8 +35,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private final MysqlCon db;
 	private final KeyStore ks;
 	private static final char[] PASSWORD = {'a', 'b'};
-	private Map<String, Integer> Sessions;
-	
+	private Map<String, Calendar> Sessions;
+	private static final int SESSIONTIME = 5; //minutes
+
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException{
 		super();
 		sc = new SymetricKeyGenerator();
@@ -40,19 +45,22 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		db = new MysqlCon();
 		ks = KeyStore.getInstance("JKS");
 		java.io.FileInputStream fis = null;
-	    ks.load(fis, PASSWORD);
-	    Sessions = new HashMap<String, Integer>(20);
+		ks.load(fis, PASSWORD);
+		Sessions = new HashMap<String, Calendar>(20);
 	}
-	
-	public Cipher login(Key pubKey /*, String nonce, byte[] encNonce*/){ //byte[] encNonce is the output of createsignature
+
+	public Cipher login(Key pubKey /*, String nonce, byte[] encNonce*/) throws AuthenticationException{ //byte[] encNonce is the output of createsignature
 		String nonce = createNonce();
 		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
-		String check = ac.Decrypt(pubKey, encNonce); //server decrypts/veryfies the signature
+		String check = ac.Decrypt(pubKey, encNonce); //server decrypts/verifies the signature
 		if(!nonce.equals(check))
-			return "Could not authenticate";
+			throw new AuthenticationException("Could not authenticate");
 		else{
 			sc.renewKey(nonce, 16, "AES");
-			Sessions.put(pubKey.toString(), 300);
+			Calendar date = Calendar.getInstance();
+			date.setTime(new Date());
+			date.add(Calendar.MINUTE, SESSIONTIME);
+			Sessions.put(pubKey.toString(), date);
 			return sc.getSecretKey(); //does this mean that the server sends the shared session key to the client?
 			//also now the times should start to count down. 
 		}
@@ -60,29 +68,39 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		//how to differentiate between the client and the server??
 	}
 	
-	public void logout(Key pubKey, String nonce, byte[] encNonce){
+	private boolean verifySession(String pubKey) {
+		if(!Sessions.containsKey(pubKey))
+			return false;
+		
+		Calendar now = Calendar.getInstance();
+		now.setTime(new Date());
+		if(Sessions.get(pubKey).getTimeInMillis() < now.getTimeInMillis())
+			return false;
+		
+		
+		return true;
+	}
+
+	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
 		String check = ac.Decrypt(pubKey, encNonce);
 		if(!nonce.equals(check))
-			;
+			throw new AuthenticationException("Could not authenticate");
 		else{
 			Sessions.remove(pubKey.toString());
 		}
 	}
-	
-	public void Counter(){}
 
-        
-        public boolean verifyHMAC(byte[] encryptedMessage, Cipher PublicsecretKey, String msg, SecretKey secretPrivateKey) {
-        	
-        	byte[] decryptedHMAC = Decrypt(encryptedMessage); //where do we get the key from??
-        			
-        	byte[] calculated_HMAC = getMac(msg, secretPrivateKey);
-        	
-        	if(decryptedHMAC == calculated_HMAC) {
-        		return true;
-        	}
-        	else return false;
-        }
+	public boolean verifyHMAC(byte[] encryptedMessage, Key PublicsecretKey, String msg, SecretKey secretPrivateKey) {
+
+		byte[] decryptedHMAC = ac.Decrypt(PublicsecretKey, encryptedMessage).getBytes(); //where do we get the key from??
+
+		byte[] calculated_HMAC = getMac(msg, secretPrivateKey);
+
+		if(decryptedHMAC.equals(calculated_HMAC)) {
+			return true;
+		}
+		else return false;
+	}
 
 	@SuppressWarnings("unused")
 	private void storeKey(String pubKey, SecretKey clientKey){
@@ -94,7 +112,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			e.printStackTrace();
 		}
 	}
-	
+
 	@SuppressWarnings("unused")
 	private SecretKey getKey(String pubKey){
 		try {
@@ -107,144 +125,124 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		return null;
 	}
 
-	 public String createNonce() {
-	        	SecureRandom nonce = new SecureRandom();
-	        	String Nonce = nonce.toString();
-	        	return Nonce;
-    }
-	
-	private boolean verifyKey(String pubKey, String ver){ //dont really understand how this is working??
-		byte[] verification = ver.getBytes();
-		byte[] publicBytes = pubKey.getBytes();
-		
-		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
-		KeyFactory keyFactory;
-		
+	public String createNonce() {
+		SecureRandom nonce = new SecureRandom();
+		String Nonce = nonce.toString();
+		return Nonce;
+	}
+
+	private boolean verifyHash(String args, byte[] clientHash){ //Needs to verify the hash
+		byte[] checkS;
 		try {
-			keyFactory = KeyFactory.getInstance("RSA");
-			PublicKey pubKey1 = keyFactory.generatePublic(keySpec);
-			String result = ac.Decrypt(pubKey1, verification);
-			return pubKey.equals(result);
-		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			checkS = ac.createHash(args);
+			byte[] checkC = sc.Decrypt(clientHash);
+			
+			return checkS.equals(checkC);
+		} catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
 			e.printStackTrace();
-			return false;
 		}
+		
+		return false;
 	}
-	
+
 	public byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
-		 PrivateKey privateKey = kg.getPrivateKey();
-	
-	     byte[] data = input.getBytes("UTF8");
-	
-	     Signature sig = Signature.getInstance("SHA1WithRSA");
-	     sig.initSign(privateKey);
-	     sig.update(data);
-	     byte[] signatureBytes = sig.sign();
-	     //System.out.println("Singature:" + new BASE64Encoder().encode(signatureBytes));
-	     //String signature = new String(signatureBytes);
-	     return signatureBytes;
+		PrivateKey privateKey = kg.getPrivateKey();
+
+		byte[] data = input.getBytes("UTF8");
+
+		Signature sig = Signature.getInstance("SHA1WithRSA");
+		sig.initSign(privateKey);
+		sig.update(data);
+		byte[] signatureBytes = sig.sign();
+		//System.out.println("Signature:" + new BASE64Encoder().encode(signatureBytes));
+		//String signature = new String(signatureBytes);
+		return signatureBytes;
 	}
-	
-	public String doCommunicate (String name) throws RemoteException{
-		return "\nServer says: Hi " +name+ "\n";
-	}
-	
+
 	@Override
-	public String register(String key, String nonce, String signature) throws RemoteException {
-	if(db.checkNonce(nonce, key)){
-		return "This message has already been receiver";
+	public String register(Key key, String nonce, String signature) throws RemoteException {
+		if(db.checkNonce(nonce, key)){
+			return "This message has already been receiver";
 
+		}
+
+		if(db.checkClient(key)) {
+			return "This public key is already registered";
+		}
+
+
+		String check = ac.Decrypt(key, signature.getBytes());
+		if(!nonce.equals(check))
+			return "you are not authorized to register";
+
+		db.addNonce(key, nonce);
+		db.createBalance(key, 100);
+		//ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
+		//balance.put(key, 5);
+
+		return "\nWelcome " + key+ ", you are now registered";
 	}
 
-	if(db.checkClient(key)) {
-		return "This public key is already registered";
-	}
-
-
-	String check = ac.Decrypt(key, signature);
-	if(!nonce.equals(check))
-		return "you are not authorized to register";
-
-	db.addNonce(key, nonce);
-	db.createBalance(key, 100);
-	//ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesnt matter, its just implement for the sql
-	//balance.put(key, 5);
-
-	return "\nWelcome " + key+ ", you are now registered";
-	}
-	}
-
-	
-	
 	@Override
-	public String sendAmount(String src, String dst, int amount, String nonce, String verification) throws RemoteException {
+	public String sendAmount(String src, String dst, byte[] verification, int amount, String nonce) throws RemoteException {
 		if(db.checkNonce(nonce, src )){
 			return "NACK";
 		}
 		else{
 			db.addNonce(src, nonce);
-			//return "ACK"
 		}	
-		
-		if(!verifyKey(src, verification))
+
+		if(!verifyHash(""+src
+						 +dst
+						 +Integer.toString(amount)
+						 +nonce, verification))
+			return "NACK";
+		else if(!verifySession(src))
 			return "NACK";
 		
 		int newBalance = db.getBalance(src) - amount;
 		if(newBalance < 0)
 			return "NACK";
-		
-		
+
 		db.CreatePendingLedgerAndUpdateBalance(src, dst, amount, newBalance);
 		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
-		//db.updateBalance(src, balance);
-		//db.createPendingLedger(src, dst, amount);
-		
+
 		return "ACK";
 	}
-		
+
 	@Override
-	public String receiveAmount(String src, String dst, String verification, int amount, int id, String nonce) throws RemoteException {
-		if(!verifyKey(dst, verification))
+	public String receiveAmount(String src, String dst, byte[] verification, int amount, int id, String nonce) throws RemoteException {
+		if(!verifyHash(""+src
+						 +dst
+						 +Integer.toString(amount)
+						 +Integer.toString(id)
+						 +nonce, verification))
 			return "NACK";
-		
+		else if(!verifySession(dst))
+			return "NACK";
+
 		db.AcceptTransactionAndUpdateBalance(dst, id);
-		//db.updateBalance(dst, db.getBalance(dst) + amount);
-		//db.createAcceptedLedger(src, dst, amount, id);
-		
 		return "ACK";
-		
 	}
+	
 	@Override
-	public List<String> checkAccount(String pubKey, String verification, String nonce) throws RemoteException {
-		if(!verifyKey(pubKey, verification))
+	public List<String> checkAccount(String pubKey, byte[] verification, String nonce) throws RemoteException {
+		if(!verifyHash(""+pubKey.toString()+nonce, verification))
 			return null;
-		
-		//ArrayList<String> account = new ArrayList<>(50);  WHY DO WE NEED THIS LIST?
-		//String balance = Integer.toString(db.getBalance(pubKey)); 
-		//account.add(balance);
-		
+		else if(!verifySession(pubKey))
+			return null;
+
 		int balance = db.getBalance(pubKey); //returns int
 		List<String> result = db.getIncomingPendingTransfers(pubKey); //returns a list of all pending request
 		result.add(Integer.toString(balance));
-		
-		
+
 		return result;
-		
-		
-		//return account;
 	}
+	
 	@Override
 	public List<String> audit(String pubKey) throws RemoteException {
-		//ArrayList<String> ledger = new ArrayList<>(50);
-		
 		List<String> output = db.getAllTransfers(pubKey);
-		//db.getIncomingPendingTransfers(pubKey);
-		//FIX ME
-		
-		//return ledger;
 		return output;
 	}
 
-		
-	
 }

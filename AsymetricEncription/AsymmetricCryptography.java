@@ -44,6 +44,12 @@ public class AsymmetricCryptography {
 		hash = new String(digest, "UTF-8");
 	}
 	
+	public byte[] createHash(String args) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		    MessageDigest md = MessageDigest.getInstance("MD5");
+		    md.update(args.getBytes());
+		    return md.digest();
+	}
+	
 	public byte[] Encrypt(Key key, String obj){
 		try {
 			this.cipher.init(Cipher.ENCRYPT_MODE, key);
