@@ -3,14 +3,19 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
@@ -27,10 +32,12 @@ import javax.crypto.SecretKey;
 import javax.security.sasl.AuthenticationException;
 
 import AsymetricEncription.AsymmetricCryptography;
+import AsymetricEncription.AsymmetricKeyGenerator;
 
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricCryptography ac;
+	private final AsymmetricKeyGenerator akg;
 	private final SymetricKeyGenerator sc;
 	private final MysqlCon db;
 	private final KeyStore ks;
@@ -38,8 +45,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private Map<String, Calendar> Sessions;
 	private static final int SESSIONTIME = 5; //minutes
 
-	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException{
+	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
+		akg = new AsymmetricKeyGenerator(128, "ServerKey");
 		sc = new SymetricKeyGenerator();
 		ac = new AsymmetricCryptography();
 		db = new MysqlCon();
@@ -146,27 +154,41 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	public byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
-		PrivateKey privateKey = kg.getPrivateKey();
+		PrivateKey privateKey = akg.getPrivateKey();
 
-		byte[] data = input.getBytes("UTF8");
-
-		Signature sig = Signature.getInstance("SHA1WithRSA");
-		sig.initSign(privateKey);
-		sig.update(data);
-		byte[] signatureBytes = sig.sign();
-		//System.out.println("Signature:" + new BASE64Encoder().encode(signatureBytes));
-		//String signature = new String(signatureBytes);
-		return signatureBytes;
+		byte[] data;
+		try {
+			data = input.getBytes("UTF8");
+			Signature sig = Signature.getInstance("SHA1WithRSA");
+			sig.initSign(privateKey);
+			sig.update(data);
+			byte[] signatureBytes = sig.sign();
+			return signatureBytes;
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+		
 	}
 
 	@Override
 	public String register(Key key, String nonce, String signature) throws RemoteException {
-		if(db.checkNonce(nonce, key)){
+		if(db.checkNonce(nonce, key.toString())){
 			return "This message has already been receiver";
 
 		}
 
-		if(db.checkClient(key)) {
+		if(db.checkClient(key.toString())) {
 			return "This public key is already registered";
 		}
 
@@ -175,8 +197,8 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(!nonce.equals(check))
 			return "you are not authorized to register";
 
-		db.addNonce(key, nonce);
-		db.createBalance(key, 100);
+		db.addNonce(key.toString(), nonce);
+		db.AddClient(key.toString(), 100);
 		//ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
 		//balance.put(key, 5);
 
