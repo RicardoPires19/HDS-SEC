@@ -4,7 +4,6 @@ import java.io.UnsupportedEncodingException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
@@ -33,7 +32,6 @@ import AsymetricEncription.AsymmetricKeyGenerator;
 
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
-	private final AsymmetricCryptography ac;
 	private final AsymmetricKeyGenerator akg;
 	private final SymetricKeyGenerator sc;
 	private final MysqlCon db;
@@ -49,7 +47,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		super();
 		akg = new AsymmetricKeyGenerator(512, "ServerKey");
 		sc = new SymetricKeyGenerator();
-		ac = new AsymmetricCryptography();
+		new AsymmetricCryptography();
 		db = new MysqlCon();
 		ks = KeyStore.getInstance("JCEKS");
 		java.io.FileInputStream fis = null;
@@ -117,29 +115,38 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		return null;
 	}
 	
-	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
-		String check = ac.Decrypt(pubKey, encNonce);
-		if(!nonce.equals(check))
+	@Override
+	public void logout(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+		if(db.checkNonce(nonce, pubKey.toString()))
 			throw new AuthenticationException("Could not authenticate");
+		
+		Signature sig = Signature.getInstance("SHA1withRSA");
+		sig.initVerify(pubKey);
+		sig.update(nonce.getBytes());
+		
+		if(!sig.verify(signature))
+			throw new AuthenticationException("You are not authorized to register");
 		else{
 			Sessions.remove(pubKey.toString());
 		}
 	}
 	
-	public SecretKey login(PublicKey pubKey /*String nonce, byte[] encNonce*/) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
-
-		String nonce = createNonce(pubKey);
-		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
+	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
+		if(db.checkNonce(nonce, pubKey.toString())){
+			throw new AuthenticationException("This message has already been received");
+		}
+		db.addNonce(pubKey.toString(), nonce.toString());
+		
+		if(!db.checkClient(pubKey.toString())) {
+			throw new AuthenticationException("This public key is not registered");
+		}
+		
 		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
 		sig.initVerify(pubKey);
 		sig.update(nonce.getBytes());
 
-		if(!sig.verify(encNonce))
+		if(!sig.verify(signature))
 			throw new AuthenticationException("You are not authorized to log in");
-
-		String pk = pubKey.toString();
-		if (!db.checkClient(pk))
-			throw new AuthenticationException("This user does not exist, please register or try again");
 
 		Calendar date = Calendar.getInstance();
 		date.setTime(new Date());

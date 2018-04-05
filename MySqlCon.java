@@ -29,7 +29,7 @@ class MysqlCon{
 			st.setString(1, pK);
 			rs=st.executeQuery();
 			while(rs.next())  {
-				String publicKey = rs.getString("publicKey");
+//				String publicKey = rs.getString("publicKey");
 				balance = rs.getInt("Balance");
 				//System.out.println(" GET BALANCE FROM: " + publicKey +" Result: "+ balance);  
 			}
@@ -197,7 +197,7 @@ class MysqlCon{
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String src = rs.getString("publicKey_sender");
-				String dst = rs.getString("publicKey_receiver");
+//				String dst = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
 				String output = "SENDER: " + src + "\n AMOUNT: " + amount ;
 				outputList.add(output);

@@ -285,6 +285,14 @@ public class RMIClient {
 	}
 
 	public static void goodbyeMenu(){
+		
+		try {
+			String nonce = RMIDemo.createNonce(pubKey);
+			RMIDemo.logout(pubKey, nonce, createSignature(nonce));
+		} catch (AuthenticationException | InvalidKeyException | NoSuchAlgorithmException | SignatureException | RemoteException e) {
+			e.printStackTrace();
+			return;
+		}
 		JOptionPane.showConfirmDialog(null, "Thank you, " +pubKey.toString()+" please come again!",
 				"Goodbye",
 				JOptionPane.PLAIN_MESSAGE,
