@@ -33,6 +33,8 @@ import java.sql.SQLException;
 import java.util.*;
 
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.security.sasl.AuthenticationException;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -53,7 +55,9 @@ public class RMIClient {
 	public static byte[] pubKeyBytes;
 	public static PrivateKey priKey;
 	public static Client RMIDemo;
+	public static SecretKey secretKey;
 	private static final verifyMac mV = new verifyMac();
+	
 
 	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException, InvalidKeyException, SignatureException, InvalidKeySpecException, NumberFormatException, SQLException{
 		if (args.length == 1) {
@@ -87,7 +91,7 @@ public class RMIClient {
 		JLabel label_key = new JLabel("Dgive Key:");
 		JTextField key = new JTextField();
 
-		String serverReply="";
+		SecretKey serverReply;
 
 		Object[] array = {label_key,  key};
 
@@ -98,8 +102,19 @@ public class RMIClient {
 		if (res == JOptionPane.OK_OPTION) {
 			String nonce = RMIDemo.createNonce(pubKey);
 			System.out.println(createSignature(nonce).toString());
-			serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce));
-			mainMenu(serverReply);
+			try {
+				serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce));
+				if(serverReply == null){
+					mainMenu("An Error ocurred. Registration Failed.");
+					System.out.println("serverReply: " + serverReply);
+					return;
+				}
+
+				secretKey = serverReply;
+				mainMenu("Registration Sucessful");
+			} catch (AuthenticationException e) {
+				System.out.println("Authentication Failure");
+			}
 		}
 		else{
 			goodbyeMenu();
@@ -144,12 +159,12 @@ public class RMIClient {
 
 		try {
 			//			serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString())).toString();
-			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(nonce, pubKey));
-			int res = JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
+			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(nonce, secretKey));
+			int res = JOptionPane.showConfirmDialog(null, serverReply.toString(), "Account Info", 
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
 			if(res == JOptionPane.OK_OPTION){
-				mainMenu("Not doing so well uh? What you wanna do now ");
+				mainMenu("Not doing so well uh? What you wanna do now?");
 				return;
 			}
 			else{
@@ -246,7 +261,9 @@ public class RMIClient {
 
 	public static void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 
+		
 		List<String> dest_choices = RMIDemo.getPublicKeys(pubKey);
+		System.out.println("AQUI!!!!");
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("Audit whom:");

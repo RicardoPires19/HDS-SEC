@@ -1,16 +1,21 @@
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PublicKey;
+import java.security.SignatureException;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.List;
 
+import javax.crypto.SecretKey;
 import javax.security.sasl.AuthenticationException;
 
 public interface Client extends Remote {
 	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException;
 
-	public String register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException;
+	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException;
 
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;

@@ -1,4 +1,8 @@
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;  
 
@@ -29,7 +33,7 @@ class MysqlCon{
 			st.setString(1, pK);
 			rs=st.executeQuery();
 			while(rs.next())  {
-				String publicKey = rs.getString("publicKey");
+//				String publicKey = rs.getString("publicKey");
 				balance = rs.getInt("Balance");
 				//System.out.println(" GET BALANCE FROM: " + publicKey +" Result: "+ balance);  
 			}
@@ -63,7 +67,7 @@ class MysqlCon{
 		return returning;
 	}
 
-	public void addNonce(String PublicKey, String Nonce) { //kjÃ¸rer bare dersom den ikke finnes der fra fÃ¸r av
+	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
 
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
 
@@ -83,13 +87,13 @@ class MysqlCon{
 
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
-		final String sql = "select ? from Nonces where PublicKey_sender= ?";
+		final String sql = "select * from Nonces where publicKey_sender= ? and nonce = ?";
 		System.out.println("checkNonce: nonce:"+nonce+" key:"+PK);
 
 		try {
 			st=con.prepareStatement(sql);
-			st.setString(1, nonce);
-			st.setString(2, PK);
+			st.setString(1, PK);
+			st.setString(2, nonce);
 			rs=st.executeQuery();
 			if(rs.next())  {
 				System.out.println(rs.getString("nonce"));
@@ -101,6 +105,10 @@ class MysqlCon{
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (Exception e) {
+			System.out.println("nonce: " + nonce);
+			System.out.println("PK: " +PK);
+			System.out.println("Exception: " + e);
 		}
 		return result;
 
@@ -135,6 +143,9 @@ class MysqlCon{
 		}
 		catch(SQLException e){
 			e.printStackTrace();
+		} catch(Exception e){
+			System.out.println("PK: " + PK);
+			System.out.println("value: " + initial_value);
 		}
 
 	}
@@ -190,7 +201,7 @@ class MysqlCon{
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String src = rs.getString("publicKey_sender");
-				String dst = rs.getString("publicKey_receiver");
+//				String dst = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
 				String output = "SENDER: " + src + "\n AMOUNT: " + amount ;
 				outputList.add(output);
@@ -296,7 +307,7 @@ class MysqlCon{
 
 
 	public List<String> getAllPublicKeys() throws SQLException {
-		final String sql = "SELECT publickey FROM accounts";
+		final String sql = "SELECT PublicKey FROM Accounts";
 		st=con.prepareStatement(sql);
 		rs=st.executeQuery();
 		List<String> resultList = new ArrayList<String>();
@@ -307,5 +318,4 @@ class MysqlCon{
 	}
 
 }  
-
 

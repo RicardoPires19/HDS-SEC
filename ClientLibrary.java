@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.security.sasl.AuthenticationException;
@@ -44,6 +43,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final int SESSIONTIME = 5; //minutes
 	private final SecureRandom nonce = new SecureRandom();
 	private final verifyMac macVerifier = new verifyMac();
+	private final SecureRandom random;
 
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
@@ -51,62 +51,32 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		sc = new SymetricKeyGenerator();
 		ac = new AsymmetricCryptography();
 		db = new MysqlCon();
-		ks = KeyStore.getInstance("JKS");
+		ks = KeyStore.getInstance("JCEKS");
 		java.io.FileInputStream fis = null;
 		ks.load(fis, PASSWORD);
 		Sessions = new HashMap<String, Calendar>(20);
-	}
+		random = new SecureRandom();
+		random.setSeed("RANDOMseeds".getBytes());
 
-	public Cipher login(PublicKey pubKey /*String nonce, byte[] encNonce*/) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
-
-		String nonce = createNonce(pubKey);
-		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
-		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-
-		if(!sig.verify(encNonce))
-			throw new AuthenticationException("You are not authorized to log in");
-
-		String pk = pubKey.toString();
-		if (!db.checkClient(pk))
-			throw new AuthenticationException("This user does not exist, please register or try again");
-
-		Calendar date = Calendar.getInstance();
-		date.setTime(new Date());
-		date.add(Calendar.MINUTE, SESSIONTIME);
-		Sessions.put(pubKey.toString(), date);
-		return sc.getSecretKey();
 	}
 
 	private boolean verifySession(PublicKey pubKey) {
-		if(!Sessions.containsKey(pubKey))
+		if(!Sessions.containsKey(pubKey.toString()))
 			return false;
 
 		Calendar now = Calendar.getInstance();
 		now.setTime(new Date());
-		if(Sessions.get(pubKey).getTimeInMillis() < now.getTimeInMillis())
+		if(Sessions.get(pubKey.toString()).getTimeInMillis() < now.getTimeInMillis())
 			return false;
-
 
 		return true;
 	}
 
-	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
-		String check = ac.Decrypt(pubKey, encNonce);
-		if(!nonce.equals(check))
-			throw new AuthenticationException("Could not authenticate");
-		else{
-			Sessions.remove(pubKey.toString());
-		}
-	}
-
-	@SuppressWarnings("unused")
-	private void storeKey(String pubKey, SecretKey clientKey){
+	private void storeKey(PublicKey pubKey, SecretKey clientKey){
 		KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
 		KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(clientKey);
 		try {
-			ks.setEntry(pubKey, skEntry, protParam);
+			ks.setEntry(pubKey.toString(), skEntry, protParam);
 		} catch (KeyStoreException e) {
 			e.printStackTrace();
 		}
@@ -146,30 +116,104 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 		return null;
 	}
+	
+	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
+		String check = ac.Decrypt(pubKey, encNonce);
+		if(!nonce.equals(check))
+			throw new AuthenticationException("Could not authenticate");
+		else{
+			Sessions.remove(pubKey.toString());
+		}
+	}
+	
+	public SecretKey login(PublicKey pubKey /*String nonce, byte[] encNonce*/) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
+
+		String nonce = createNonce(pubKey);
+		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
+		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+		sig.initVerify(pubKey);
+		sig.update(nonce.getBytes());
+
+		if(!sig.verify(encNonce))
+			throw new AuthenticationException("You are not authorized to log in");
+
+		String pk = pubKey.toString();
+		if (!db.checkClient(pk))
+			throw new AuthenticationException("This user does not exist, please register or try again");
+
+		Calendar date = Calendar.getInstance();
+		date.setTime(new Date());
+		date.add(Calendar.MINUTE, SESSIONTIME);
+		Sessions.put(pubKey.toString(), date);
+		sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
+		storeKey(pubKey, sc.getSecretKey());
+		return sc.getSecretKey();
+	}
 
 	@Override
-	public String register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException {
+	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException {
 		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-
+			throw new AuthenticationException("This message has already been received");
 		}
 
 		if(db.checkClient(pubKey.toString())) {
-			return "This public key is already registered";
+			throw new AuthenticationException("This public key is already registered");
 		}
 
 		Signature sig = Signature.getInstance("SHA1withRSA");
 		sig.initVerify(pubKey);
 		sig.update(nonce.getBytes());
 		if(!sig.verify(signature))
-			return "you are not authorized to register";
+			throw new AuthenticationException("You are not authorized to register");
 
 		db.addNonce(pubKey.toString(), nonce.toString());
 		db.AddClient(pubKey.toString(), 100);
 		//		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
 		//		balance.put(key, 5);
 
-		return "\nWelcome sir/milady , you are now registered";
+		Calendar date = Calendar.getInstance();
+		date.setTime(new Date());
+		date.add(Calendar.MINUTE, SESSIONTIME);
+		Sessions.put(pubKey.toString(), date);
+		sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
+		storeKey(pubKey, sc.getSecretKey());
+		
+		return sc.getSecretKey();
+	}
+
+	@Override
+	public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
+		if(db.checkNonce(nonce, pubKey.toString())){
+			return "This message has already been received";
+
+		}
+		String serverReply = "";
+
+		if(!verifySession(pubKey))
+			return "Not in Session";
+
+		try {
+			macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
+		} catch (Exception e) {
+			throw new AuthenticationException("Could not authenticate");
+		}
+
+
+		int balance = db.getBalance(pubKey.toString()); //returns int
+		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
+		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
+		System.out.println("result 255: " + result);
+		if(result.isEmpty()){
+			return serverReply;
+		}
+		else{
+			serverReply = serverReply + "\nYou have the following pending:";
+			for(String str: result){
+				serverReply = serverReply + "\n" +str;	
+			}
+		}
+
+		return serverReply;
 	}
 
 	@Override
@@ -221,39 +265,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		return "ACK";
 	}
 
-	@Override
-	public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-
-		}
-		String serverReply = "";
-
-		if(!verifySession(pubKey))
-			return "Not in Session";
-
-		try {
-			macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
-		} catch (Exception e) {
-			throw new AuthenticationException("Could not authenticate");
-		}
-
-
-		int balance = db.getBalance(pubKey.toString()); //returns int
-		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
-		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
-		if(result.isEmpty()){
-			return serverReply;
-		}
-		else{
-			serverReply = serverReply + "\nYou have the following pending:";
-			for(String str: result){
-				serverReply = serverReply + "\n" +str;	
-			}
-		}
-
-		return serverReply;
-	}
+	
 
 	@Override
 	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {
@@ -273,6 +285,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		List<String> output = db.getAllPublicKeys();
 		return output;
 	}
+	@Override
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException{
 		List<String> output = db.pedingTransactionsList(pubKey.toString());
 		return output;
