@@ -13,9 +13,9 @@ class MysqlCon{
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
 			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?"
                             + "user=root&password=root");
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) NOT NULL, Balance INT NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(2048) NOT NULL, Balance INT NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(2048) NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(2048) NOT NULL, PublicKey_receiver VARCHAR(2048) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
 		}catch(Exception e){ System.out.println(e);}  
 
 	}  
@@ -83,16 +83,15 @@ class MysqlCon{
 
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
-		final String sql = "select ? from Nonces where PublicKey_sender= ?";
+		final String sql = "select * from Nonces where PublicKey_sender= ? and Nonce = ?";
 		System.out.println("checkNonce: nonce:"+nonce+" key:"+PK);
 
 		try {
 			st=con.prepareStatement(sql);
-			st.setString(1, nonce);
-			st.setString(2, PK);
+			st.setString(1, PK);
+			st.setString(2, nonce);
 			rs=st.executeQuery();
 			if(rs.next())  {
-				System.out.println(rs.getString("nonce"));
 				result = true;
 			}
 			
@@ -218,7 +217,7 @@ class MysqlCon{
 				String publicKey_sender = rs.getString("publicKey_sender");
 				String publicKey_receiver = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
-				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount;
+				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount+ ", Status: " + rs.getString("status");
 				transfers.add(transfer);
 
 			}

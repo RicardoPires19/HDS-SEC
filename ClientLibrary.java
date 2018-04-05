@@ -9,6 +9,7 @@ import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -73,24 +74,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			date.setTime(new Date());
 			date.add(Calendar.MINUTE, SESSIONTIME);
 			Sessions.put(pubKey.toString(), date);
-			return sc.getSecretKey(); //does this mean that the server sends the shared session key to the client?
-			//also now the times should start to count down. 
-//		}
-		//Where to add the creation of an hmac??
-		//how to differentiate between the client and the server??
-	}
-	
-	private boolean verifySession(PublicKey pubKey) {
-		if(!Sessions.containsKey(pubKey))
-			return false;
-		
-		Calendar now = Calendar.getInstance();
-		now.setTime(new Date());
-		if(Sessions.get(pubKey).getTimeInMillis() < now.getTimeInMillis())
-			return false;
-		
-		
-		return true;
+			return sc.getSecretKey();
 	}
 
 	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
@@ -102,178 +86,51 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 	}
 
-	public boolean verifyHMAC(byte[] encryptedMessage, Key PublicsecretKey, String msg, SecretKey secretPrivateKey) {
-
-//		byte[] decryptedHMAC = ac.Decrypt(PublicsecretKey, encryptedMessage).getBytes(); //where do we get the key from??
-//
-//		byte[] calculated_HMAC = getMac(msg, secretPrivateKey);
-//
-//		if(decryptedHMAC.equals(calculated_HMAC)) {
-//			return true;
-//		}
-//		else return false;
-		return true;
-	}
-
-	@SuppressWarnings("unused")
-	private void storeKey(String pubKey, SecretKey clientKey){
-		KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
-		KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(clientKey);
-		try {
-			ks.setEntry(pubKey, skEntry, protParam);
-		} catch (KeyStoreException e) {
-			e.printStackTrace();
-		}
-	}
-
-	@SuppressWarnings("unused")
-	private SecretKey getKey(String pubKey){
-		try {
-			KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
-			KeyStore.SecretKeyEntry skEntry = (SecretKeyEntry) ks.getEntry("privateKeyAlias", protParam);
-			return skEntry.getSecretKey();
-		} catch (NoSuchAlgorithmException | UnrecoverableEntryException | KeyStoreException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
 	@Override
-	public String createNonce(PublicKey pubKey) {
-		String Nonce = Integer.toString(nonce.nextInt());
-		return Nonce;
-	}
-	
-	@SuppressWarnings("unused")
-	private boolean verifyHash(String args, byte[] clientHash){ //Needs to verify the hash
-		byte[] checkS;
-		try {
-			checkS = ac.createHash(args);
-			byte[] checkC = sc.Decrypt(clientHash);
-			
-			return checkS.equals(checkC);
-		} catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-			e.printStackTrace();
+	public String register(PublicKey pubKey, String nonce, byte[] signature,byte[] cHash) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException {
+		if(!verifySignature(pubKey,nonce,signature)){
+			return "This mensage was tampered";
 		}
 		
-		return false;
-	}
-
-	public byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
-		PrivateKey privateKey = akg.getPrivateKey();
-
-		byte[] data;
-		try {
-			data = input.getBytes("UTF8");
-			Signature sig = Signature.getInstance("SHA1WithRSA");
-			sig.initSign(privateKey);
-			sig.update(data);
-			byte[] signatureBytes = sig.sign();
-			return signatureBytes;
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return null;
+		if(!verifyHash(pubKey.toString(), cHash))
+			return "This message has been tampered with";
 		
-	}
-
-	@Override
-	public String register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
-
 		}
 
 		if(db.checkClient(pubKey.toString())) {
-			return "This public key is already registered";
+			return "Welcome Back";
 		}
 		
-	    Signature sig = Signature.getInstance("SHA1withRSA");
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-		if(!sig.verify(signature))
-			return "you are not authorized to register";
-
+		
+	    
 		db.addNonce(pubKey.toString(), nonce.toString());
 		db.AddClient(pubKey.toString(), 100);
 //		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
 //		balance.put(key, 5);
 
-		return "\nWelcome sir/milady , you are now registered";
-	}
-
-	@Override
-	public String sendAmount(PublicKey src, PublicKey dst, int amount, String nonce,byte[] signature) throws RemoteException {
-		if(db.checkNonce(nonce, src.toString())){
-			return "This message has already been received";
-
-		}
-//		if(db.checkNonce(nonce, src.toString())){
-//			return "NACK";
-//		}
-//		else{
-//			db.addNonce(src.toString(), nonce);
-//		}	
-//
-//		if(!verifyHash(""+src
-//						 +dst
-//						 +Integer.toString(amount)
-//						 +nonce, verification))
-//			return "NACK";
-//		else if(!verifySession(src))
-//			return "NACK";
-//		
-		int newBalance = db.getBalance(src.toString()) - amount;
-		if(newBalance < 0)
-			return "NACK";
-
-		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst.toString(), amount, newBalance);
-		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
-
-		return "ACK";
-	}
-
-	@Override
-	public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] signature) throws RemoteException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-
-		}
-//		if(!verifyHash(""+src
-//						 +dst
-//						 +Integer.toString(amount)
-//						 +Integer.toString(id)
-//						 +nonce, verification))
-//			return "NACK";
-//		else if(!verifySession(dst))
-//			return "NACK";
-//
-		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
-		return "ACK";
+		return "\nWelcome sir/milady , you are now registered check your balance ;)";
 	}
 	
 	@Override
-	public String checkAccount(PublicKey pubKey, String nonce,  byte[] signature, byte[] cHash) throws RemoteException {
+	public String checkAccount(PublicKey pubKey, String nonce,  byte[] signature, byte[] cHash) throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		if(!verifySignature(pubKey,nonce,signature)){
+			return "This mensage was tampered";
+		}
+		
+		if(!verifyHash(pubKey.toString(), cHash))
+			return "This message has been tampered with";
+		
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
 
 		}
-		String serverReply = "";
-//		if(!verifyHash(""+pubKey.toString()+nonce, signature))
-//			return null;
-//		else if(!verifySession(pubKey))
-//			return null;
 		
+		String serverReply = "";
+
+//		if(!verifySession(pubKey))
+//			return null;
 		
 		int balance = db.getBalance(pubKey.toString()); //returns int
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
@@ -292,11 +149,63 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 	
 	@Override
-	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {
+	public String sendAmount(PublicKey src, PublicKey dst, int amount, String nonce,byte[] signature,byte[] cHash) throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		if(!verifySignature(src,nonce,signature)){
+			return "This mensage was tampered";
+		}
+		
+		if(!verifyHash(src.toString(), cHash))
+			return "This message has been tampered with";
+		
+		if(db.checkNonce(nonce, src.toString())){
+			return "This message has already been received";
+
+		}
+		
+		db.addNonce(src.toString(), nonce);
+		
+		int newBalance = db.getBalance(src.toString()) - amount;
+		if(newBalance < 0)
+			return "WARNING: Insuficient balance!";
+
+		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst.toString(), amount, newBalance);
+		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
+		System.out.println("SENDAMOUNT SUCCESS");
+		return "Sucess, transaction is now pending";
+	}
+
+	@Override
+	public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] signature,byte[] cHash) throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		if(!verifySignature(pubKey,nonce,signature)){
+			return "This mensage was tampered";
+		}
+		
+		if(!verifyHash(pubKey.toString(), cHash))
+			return "This message has been tampered with";
+		
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
 
 		}
+		
+		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
+		return "ACK";
+	}
+		
+	@Override
+	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature,byte[] cHash) throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
+		if(!verifySignature(pubKey,nonce,signature)){
+			return "This mensage was tampered";
+		}
+		
+		if(!verifyHash(pubKey.toString(), cHash))
+			return "This message has been tampered with";
+		
+		if(db.checkNonce(nonce, pubKey.toString())){
+			return "This message has already been received";
+
+		}
+		
 		List<String> output = db.getAllTransfers(audited);
 		String serverReply = "";
 		for(String str: output){
@@ -305,14 +214,80 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		return serverReply;
 	}
 	
+	//USED TO PROVIDE USER A LIST OF KEYS TO SEND AMOUNT
 	@Override
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException{
 		List<String> output = db.getAllPublicKeys();
 		return output;
 	}
+	
+	//USED TO PROVIDE USER A LIST OF PENDING TRANSACTIONS FOR THE USER TO ACCEPT
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException{
 		List<String> output = db.pedingTransactionsList(pubKey.toString());
 		return output;
+	}
+	
+	private boolean verifySession(PublicKey pubKey) {
+		if(!Sessions.containsKey(pubKey))
+			return false;
+		
+		Calendar now = Calendar.getInstance();
+		now.setTime(new Date());
+		if(Sessions.get(pubKey).getTimeInMillis() < now.getTimeInMillis())
+			return false;
+		
+		
+		return true;
+	}
+	
+	public boolean verifyHMAC(byte[] encryptedMessage, Key PublicsecretKey, String msg, SecretKey secretPrivateKey) {
+
+//		byte[] decryptedHMAC = ac.Decrypt(PublicsecretKey, encryptedMessage).getBytes(); //where do we get the key from??
+//
+//		byte[] calculated_HMAC = getMac(msg, secretPrivateKey);
+//
+//		if(decryptedHMAC.equals(calculated_HMAC)) {
+//			return true;
+//		}
+//		else return false;
+		return true;
+	}
+
+	@Override
+	public String createNonce(PublicKey pubKey) {
+		String Nonce = Integer.toString(nonce.nextInt());
+		return Nonce;
+	}
+	
+	private boolean verifySignature(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+		
+		Signature sig = Signature.getInstance("SHA1withRSA");
+		sig.initVerify(pubKey);
+		sig.update(nonce.getBytes());
+		if(!sig.verify(signature))
+			return false;
+		
+		return true;
+
+	}
+	
+	private boolean verifyHash(String args, byte[] clientHash){ //Needs to verify the hash
+		
+	    MessageDigest md;
+		try {
+			md = MessageDigest.getInstance("MD5");
+		    md.update(args.getBytes());
+		    byte[] serverHash = md.digest();	
+		    if(!MessageDigest.isEqual(serverHash, clientHash)){
+		    	return false;
+		    }
+		    
+		} catch (NoSuchAlgorithmException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 
 }

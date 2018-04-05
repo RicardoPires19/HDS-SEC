@@ -15,7 +15,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
-import java.security.KeyStore;
+//import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -25,6 +25,8 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
+import java.security.KeyStore.SecretKeyEntry;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
@@ -33,12 +35,14 @@ import java.sql.SQLException;
 import java.util.*;
 
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 import AsymetricEncription.AsymmetricCryptography;
 import AsymetricEncription.AsymmetricKeyGenerator;
+import AsymetricEncription.KeyStore;
 
 @SuppressWarnings("unused")
 public class RMIClient {
@@ -60,17 +64,27 @@ public class RMIClient {
 			
 			try {
 				RMIDemo = (Client)Naming.lookup(url);
-				
-				akg = new AsymmetricKeyGenerator(512, "ServerKey");
-				akg.createKeys();
-				priKey = akg.getPrivateKey();
-				pubKey = akg.getPublicKey();
-				pubKeyBytes = pubKey.getEncoded();
+				try {
+					pubKey = KeyStore.readPublicKey();
+					priKey = KeyStore.readPrivateKey();
+				} catch (Exception e) {
+					try {
+						KeyStore.createKeyPair();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+//				akg = new AsymmetricKeyGenerator(512, "ServerKey");
+//				akg.createKeys();
+//				priKey = akg.getPrivateKey();
+//				pubKey = akg.getPublicKey();
+//				pubKeyBytes = pubKey.getEncoded();
 				
 				sc = new SymetricKeyGenerator();
 				ac = new AsymmetricCryptography();
 				
-				ks = KeyStore.getInstance("JKS");
+				//ks = KeyStore.getInstance("JKS");
 
 			} catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
 				e.printStackTrace();
@@ -83,21 +97,22 @@ public class RMIClient {
 	}
 
 	public static void registerMenu() throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, NumberFormatException, UnsupportedEncodingException, SQLException{
-		JLabel label_key = new JLabel("Dgive Key:");
-		JTextField key = new JTextField();
-		 
-		String serverReply="";
 		
-		Object[] array = {label_key,  key};
-		 
-		int res = JOptionPane.showConfirmDialog(null, array, "Register", 
-		        JOptionPane.OK_CANCEL_OPTION,
-		        JOptionPane.PLAIN_MESSAGE);
+		Object[] options = {"START",
+                "NVM BYE"};
+		int res = JOptionPane.showOptionDialog(null,
+			"Welcome to HDS Coin",
+			"HDS Coin",
+			JOptionPane.YES_NO_CANCEL_OPTION,
+			JOptionPane.QUESTION_MESSAGE,
+			null,
+			options,
+			options[0]);
 		
 		if (res == JOptionPane.OK_OPTION) {
 			String nonce = RMIDemo.createNonce(pubKey);
 			System.out.println(createSignature(nonce).toString());
-			serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce));
+			String serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString()));
 			mainMenu(serverReply);
 		}
 		else{
@@ -139,7 +154,7 @@ public class RMIClient {
 	
 	public static void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 		String nonce = RMIDemo.createNonce(pubKey);
-		String serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString())).toString();
+		String serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString()));
 		int res = JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 		        JOptionPane.CANCEL_OPTION,
 		        JOptionPane.INFORMATION_MESSAGE);
@@ -172,7 +187,7 @@ public class RMIClient {
 		
 		if(res != null){
 			String nonce = RMIDemo.createNonce(pubKey);
-			String serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, createSignature(nonce));
+			String serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, createSignature(nonce),createHash(pubKey.toString()));
 			JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 			        JOptionPane.CANCEL_OPTION,
 			        JOptionPane.INFORMATION_MESSAGE); // Initial choice);
@@ -208,7 +223,7 @@ public class RMIClient {
 			if (choice !=null){
 				String nonce = RMIDemo.createNonce(pubKey);
 				int result_id = Integer.parseInt(choice.substring(3, choice.indexOf("Sender:")).trim());
-				String serverReply = RMIDemo.receiveAmount(pubKey,result_id,nonce,createSignature(nonce));
+				String serverReply = RMIDemo.receiveAmount(pubKey,result_id,nonce,createSignature(nonce),createHash(pubKey.toString()));
 				JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 				        JOptionPane.CANCEL_OPTION,
 				        JOptionPane.INFORMATION_MESSAGE);
@@ -233,7 +248,7 @@ public class RMIClient {
 		
 		if(choice != null){
 			String nonce = RMIDemo.createNonce(pubKey);
-			String serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce));
+			String serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce),createHash(pubKey.toString()));
 			JOptionPane.showConfirmDialog(null, serverReply,
 				    "Auditing " + choice,
 				    JOptionPane.PLAIN_MESSAGE,
@@ -253,12 +268,7 @@ public class RMIClient {
 		return;
 	}
 	
-//	public String createNonce() {
-//		SecureRandom nonce = new SecureRandom();
-//		String Nonce = nonce.toString();
-//		return Nonce;
-//	}
-	
+	//SIGNATURE PROVES THAT THE MENSAGE WAS SENT BY THE USER
 	public static byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
 		byte[] data;
 		try {
@@ -285,6 +295,8 @@ public class RMIClient {
 		
 	}
 	
+	
+	// HASH IS USED TO PROVE THE TEXT HASNT BEEN MODIFIED
 	public static byte[] createHash(String args) throws NoSuchAlgorithmException, UnsupportedEncodingException {
 	    MessageDigest md = MessageDigest.getInstance("MD5");
 	    md.update(args.getBytes());

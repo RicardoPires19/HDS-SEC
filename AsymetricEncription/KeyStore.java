@@ -7,8 +7,11 @@ import java.security.spec.*;
 
 public class KeyStore {
 	
-	public static void main(String[] args) throws Exception{
-		 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+	public KeyStore(){	 
+	}
+	
+	public static void createKeyPair() throws Exception{
+		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 		 kpg.initialize(2048);
 
 		 KeyPair kp = kpg.genKeyPair();
@@ -17,18 +20,15 @@ public class KeyStore {
 
 		 RSAPublicKeySpec pub = fact.getKeySpec(kp.getPublic(),
 		        RSAPublicKeySpec.class);
-		 saveToFile("keystore.jks", 
+		 saveToFile("publicKey", 
 		        pub.getModulus(), pub.getPublicExponent());
 
 		 System.out.println(pub.toString());
 		 
 		 RSAPrivateKeySpec priv = fact.getKeySpec(kp.getPrivate(),
 		        RSAPrivateKeySpec.class);
-		 saveToFile("keystore.jks", 
+		 saveToFile("privateKey", 
 		         priv.getModulus(), priv.getPrivateExponent());
-		 
-		 System.out.println(readPublicKey().toString());
-
 	}
 	
 	
@@ -43,17 +43,37 @@ public class KeyStore {
 			oout.close();
 		}
 	}
-	private static PublicKey readPublicKey() throws Exception {
-	    InputStream in = new FileInputStream("keystore.jks");
+	public static PublicKey readPublicKey() throws Exception {
+	    InputStream in = new FileInputStream("publicKey");
 	    ObjectInputStream oin =
 	            new ObjectInputStream(new BufferedInputStream(in));
 	    try {
 	        BigInteger m = (BigInteger) oin.readObject();
 	        BigInteger e = (BigInteger) oin.readObject();
+	        RSAPrivateKeySpec pkeySpec = new RSAPrivateKeySpec(m,e);
 	        RSAPublicKeySpec keySpec = new RSAPublicKeySpec(m, e);
 	        KeyFactory fact = KeyFactory.getInstance("RSA");
 	        PublicKey pubKey = fact.generatePublic(keySpec);
+	        PrivateKey privKey = fact.generatePrivate(pkeySpec);
 	        return pubKey;
+	    } catch (Exception e) {
+	        throw new Exception(e);
+	    } finally {
+	        oin.close();
+	    }
+	}
+	
+	public static PrivateKey readPrivateKey() throws Exception{
+		InputStream in = new FileInputStream("privateKey");
+	    ObjectInputStream oin =
+	            new ObjectInputStream(new BufferedInputStream(in));
+	    try {
+	        BigInteger m = (BigInteger) oin.readObject();
+	        BigInteger e = (BigInteger) oin.readObject();
+	        RSAPrivateKeySpec pkeySpec = new RSAPrivateKeySpec(m,e);
+	        KeyFactory fact = KeyFactory.getInstance("RSA");
+	        PrivateKey privKey = fact.generatePrivate(pkeySpec);
+	        return privKey;
 	    } catch (Exception e) {
 	        throw new Exception(e);
 	    } finally {
