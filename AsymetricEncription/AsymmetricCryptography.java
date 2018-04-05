@@ -27,6 +27,10 @@ public class AsymmetricCryptography {
 		this.path = path;
 	}
 	
+	public AsymmetricCryptography() throws NoSuchAlgorithmException, NoSuchPaddingException{
+		this.cipher = Cipher.getInstance("RSA");
+	}
+	
 	private void createHash() throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		try (InputStream is = Files.newInputStream(Paths.get(path));
@@ -38,6 +42,32 @@ public class AsymmetricCryptography {
 		byte[] digest = md.digest();
 		
 		hash = new String(digest, "UTF-8");
+	}
+	
+	public byte[] createHash(String args) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+		    MessageDigest md = MessageDigest.getInstance("MD5");
+		    md.update(args.getBytes());
+		    return md.digest();
+	}
+	
+	public byte[] Encrypt(Key key, String obj){
+		try {
+			this.cipher.init(Cipher.ENCRYPT_MODE, key);
+			encHash = cipher.doFinal(obj.getBytes());
+		} catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
+			e.printStackTrace();
+		}
+		return  encHash;
+	}
+	
+	public String Decrypt(Key key, byte[] obj){
+		try {
+			this.cipher.init(Cipher.DECRYPT_MODE, key);
+			return new String(cipher.doFinal(obj));
+		} catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	public byte[] EncryptHash(Key key) throws InvalidKeyException, IllegalBlockSizeException, 
@@ -53,17 +83,5 @@ public class AsymmetricCryptography {
 	BadPaddingException, UnsupportedEncodingException, NoSuchAlgorithmException {
 		this.cipher.init(Cipher.DECRYPT_MODE, key);
 		return new String(cipher.doFinal(encHash));
-	}
-	
-	/* Example of the classes working */
-	public static void main(String[] args) throws Exception {
-		
-		AsymmetricKeyGenerator akg = new AsymmetricKeyGenerator(1024, "test");
-		AsymmetricCryptography ac = new AsymmetricCryptography("C:\\Users\\Ricardo\\Downloads\\resume.pdf");
-		
-		akg.createKeys();
-		
-		System.out.println("Enc: " + ac.EncryptHash(akg.getPublicKey()));
-		System.out.println("Dec: " + ac.DecryptHash(akg.getPrivateKey()));
 	}
 }
