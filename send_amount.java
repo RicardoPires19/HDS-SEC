@@ -17,7 +17,7 @@ public class send_amount {
 				current_balance-=amount; 
 			
 				//updates Balance and creates pending request
-				connect.updateCreatePendingLedgerAndUpdateBalance(PK_source, PK_destination, (int) amount, current_balance);
+				//connect.updateCreatePendingLedgerAndUpdateBalance(PK_source, PK_destination, (int) amount, current_balance);
 				//send ack to client
 		}else {
 				//send message to client saying that it is not possible due to too low balance
