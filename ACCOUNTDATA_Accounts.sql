@@ -23,9 +23,8 @@ DROP TABLE IF EXISTS `Accounts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `Accounts` (
-  `PublicKey` varchar(50) NOT NULL,
   `Balance` int(11) NOT NULL,
-  PRIMARY KEY (`PublicKey`)
+  `PublicKey` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -35,7 +34,7 @@ CREATE TABLE `Accounts` (
 
 LOCK TABLES `Accounts` WRITE;
 /*!40000 ALTER TABLE `Accounts` DISABLE KEYS */;
-INSERT INTO `Accounts` VALUES ('1234',80),('12344',6),('221',70);
+INSERT INTO `Accounts` VALUES (80,''),(6,''),(70,'');
 /*!40000 ALTER TABLE `Accounts` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -48,4 +47,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-03-22 11:09:15
+-- Dump completed on 2018-04-05 12:21:36
