@@ -72,14 +72,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		
 	
 		String pk = pubKey.toString();
-		if (!db.checkClient(pk));
+		if (!db.checkClient(pk))
 			throw new AuthenticationException("This user does not exist, please register or try again");
 			
-		
-		
-		
-		
-		
 		
 		//String check = ac.Decrypt(pubKey, encNonce); //server decrypts/verifies the signature
 //		String nonce = getNonce(pubKey);
