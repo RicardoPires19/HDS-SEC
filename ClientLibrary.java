@@ -60,10 +60,28 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		Sessions = new HashMap<String, Calendar>(20);
 	}
 
-	public Cipher login(Key pubKey /*, String nonce, byte[] encNonce*/) throws AuthenticationException{ //byte[] encNonce is the output of createsignature
-		//String nonce = createNonce();
-		//byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
-//		String check = ac.Decrypt(pubKey, encNonce); //server decrypts/verifies the signature
+	public Cipher login(PublicKey pubKey /*String nonce, byte[] encNonce*/) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
+		
+		String nonce = createNonce(pubKey);	
+		byte [] encNonce = createSignature(nonce); //client signs the nonce, the client has its private key stored. 
+		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+		sig.initVerify(pubKey);
+		sig.update(nonce.getBytes());
+		if(!sig.verify(encNonce))
+			throw new AuthenticationException("You are not authorized to log in");
+		
+	
+		String pk = pubKey.toString();
+		if (!db.checkClient(pk));
+			throw new AuthenticationException("This user does not exist, please register or try again");
+			
+		
+		
+		
+		
+		
+		
+		//String check = ac.Decrypt(pubKey, encNonce); //server decrypts/verifies the signature
 //		String nonce = getNonce(pubKey);
 //		if(!nonce.equals(check))
 //			throw new AuthenticationException("Could not authenticate");
@@ -79,6 +97,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		//Where to add the creation of an hmac??
 		//how to differentiate between the client and the server??
 	}
+	
 	
 	private boolean verifySession(PublicKey pubKey) {
 		if(!Sessions.containsKey(pubKey))
