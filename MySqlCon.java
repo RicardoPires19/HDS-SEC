@@ -1,8 +1,4 @@
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;  
 
@@ -33,7 +29,7 @@ class MysqlCon{
 			st.setString(1, pK);
 			rs=st.executeQuery();
 			while(rs.next())  {
-//				String publicKey = rs.getString("publicKey");
+				String publicKey = rs.getString("publicKey");
 				balance = rs.getInt("Balance");
 				//System.out.println(" GET BALANCE FROM: " + publicKey +" Result: "+ balance);  
 			}
@@ -201,7 +197,7 @@ class MysqlCon{
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String src = rs.getString("publicKey_sender");
-//				String dst = rs.getString("publicKey_receiver");
+				String dst = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
 				String output = "SENDER: " + src + "\n AMOUNT: " + amount ;
 				outputList.add(output);
@@ -267,9 +263,9 @@ class MysqlCon{
 		final String sql = "update Ledgers set status='accepted'"
 				+ " where ID= ?";
 
-		final String sql3 = "select amount from Ledgers where ID=?";
+		final String sql3 = "select amount from Ledger where ID=?";
 
-		final String sql2 = "Update Accounts set balance = balance+? where PublicKey=?";
+		final String sql2 = "Update Accounts set Balance = Balance+? where PublicKey_receiver=?";
 		int amount = -1;
 		try {
 			con.setAutoCommit(false);

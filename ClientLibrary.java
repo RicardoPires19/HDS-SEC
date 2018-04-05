@@ -263,9 +263,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 
 		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
 		return "ACK";
-	}
-
-	
+	}	
 
 	@Override
 	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {

@@ -200,7 +200,7 @@ public class RMIClient {
 			String serverReply;
 			try {
 				//				serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, createSignature(nonce));
-				serverReply = RMIDemo.sendAmount(pubKey, pubKey, 10, nonce, mV.createHmac(nonce, pubKey));
+				serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, mV.createHmac(nonce, secretKey));
 				JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 						JOptionPane.CANCEL_OPTION,
 						JOptionPane.INFORMATION_MESSAGE); // Initial choice);
@@ -243,7 +243,7 @@ public class RMIClient {
 				String serverReply;
 				try {
 					//					serverReply = RMIDemo.receiveAmount(pubKey,result_id,nonce,createSignature(nonce));
-					serverReply = RMIDemo.receiveAmount(pubKey, result_id, nonce, mV.createHmac(nonce, pubKey));
+					serverReply = RMIDemo.receiveAmount(pubKey, result_id, nonce, mV.createHmac(nonce, secretKey));
 					JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 							JOptionPane.CANCEL_OPTION,
 							JOptionPane.INFORMATION_MESSAGE);
@@ -263,7 +263,6 @@ public class RMIClient {
 
 		
 		List<String> dest_choices = RMIDemo.getPublicKeys(pubKey);
-		System.out.println("AQUI!!!!");
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("Audit whom:");
