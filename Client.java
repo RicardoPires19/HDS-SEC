@@ -20,7 +20,7 @@ public interface Client extends Remote {
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
-	public String sendAmount(PublicKey src, PublicKey dst, int amount, String nonce, byte[] bs) throws RemoteException, AuthenticationException;
+	public String sendAmount(PublicKey src, String string, int amount, String nonce, byte[] bs) throws RemoteException, AuthenticationException;
 	public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] bs) throws RemoteException, AuthenticationException;
 	public String checkAccount(PublicKey pubKey, String nonce, byte[] bs) throws RemoteException, AuthenticationException;
 }

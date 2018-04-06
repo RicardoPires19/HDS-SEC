@@ -224,18 +224,12 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	@Override
-	public String sendAmount(PublicKey src, PublicKey dst, int amount, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
+	public String sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
 		if(db.checkNonce(nonce, src.toString())){
 			return "This message has already been received";
 
 		}
-		//		if(db.checkNonce(nonce, src.toString())){
-		//			return "NACK";
-		//		}
-		//		else{
-		//			db.addNonce(src.toString(), nonce);
-		//		}	
-		//
+		
 		if(!verifySession(src))
 			return "Not in Session";
 
@@ -249,7 +243,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(newBalance < 0)
 			return "NACK";
 
-		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst.toString(), amount, newBalance);
+		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance);
 		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
 
 		return "ACK";

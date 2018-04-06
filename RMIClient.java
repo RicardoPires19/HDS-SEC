@@ -200,7 +200,7 @@ public class RMIClient {
 			String serverReply;
 			try {
 				//				serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, createSignature(nonce));
-				serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, mV.createHmac(nonce, secretKey));
+				serverReply = RMIDemo.sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, mV.createHmac(nonce, secretKey));
 				JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 						JOptionPane.CANCEL_OPTION,
 						JOptionPane.INFORMATION_MESSAGE); // Initial choice);
