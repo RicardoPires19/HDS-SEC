@@ -4,9 +4,11 @@ import java.io.UnsupportedEncodingException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -32,6 +34,7 @@ import AsymetricEncription.AsymmetricKeyGenerator;
 
 public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
+	private final AsymmetricCryptography ac;
 	private final AsymmetricKeyGenerator akg;
 	private final SymetricKeyGenerator sc;
 	private final MysqlCon db;
@@ -46,9 +49,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
 		akg = new AsymmetricKeyGenerator(512, "ServerKey");
+		ac = new AsymmetricCryptography();
 		akg.createKeyPair();
 		sc = new SymetricKeyGenerator();
-		new AsymmetricCryptography();
 		db = new MysqlCon();
 		ks = KeyStore.getInstance("JCEKS");
 		java.io.FileInputStream fis = null;
@@ -120,11 +123,12 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public void logout(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{
 		if(db.checkNonce(nonce, pubKey.toString()))
 			throw new AuthenticationException("Could not authenticate");
-		
-		Signature sig = Signature.getInstance("SHA1withRSA");
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-		
+		else{
+      db.addNonce(src.toString(), nonce);
+    }	
+    if(!verifySignature(pubKey,nounce,signature))
+			throw new AuthenticationException("You are not authorized to log in");
+    
 		if(!sig.verify(signature))
 			throw new AuthenticationException("You are not authorized to register");
 		else{
@@ -132,6 +136,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 	}
 	
+
 	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
@@ -148,7 +153,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 
 		if(!sig.verify(signature))
 			throw new AuthenticationException("You are not authorized to log in");
-
+    
 		Calendar date = Calendar.getInstance();
 		date.setTime(new Date());
 		date.add(Calendar.MINUTE, SESSIONTIME);
@@ -159,23 +164,21 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	@Override
-	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException {
+	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
-
+    else{
+      db.addNonce(pubKey.toString(), nonce);
+    }	
+		if(!verifySignature(pubKey,nonce,signature)){
+			throw new AuthenticationException("You are not authorized to log in");
+		}
+		
 		if(db.checkClient(pubKey.toString())) {
 			throw new AuthenticationException("This public key is already registered");
 		}
-
-		Signature sig = Signature.getInstance("SHA1withRSA");
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-		if(!sig.verify(signature))
-			throw new AuthenticationException("You are not authorized to register");
-
-		db.addNonce(pubKey.toString(), nonce.toString());
-		db.AddClient(pubKey.toString(), 100);
+«		db.AddClient(pubKey.toString(), 100);
 		//		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
 		//		balance.put(key, 5);
 
@@ -193,8 +196,10 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
-
 		}
+    else{
+      db.addNonce(pubKey.toString(), nonce);
+    }	
 		String serverReply = "";
 
 		if(!verifySession(pubKey))
@@ -210,7 +215,6 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		int balance = db.getBalance(pubKey.toString()); //returns int
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
 		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
-		System.out.println("result 255: " + result);
 		if(result.isEmpty()){
 			return serverReply;
 		}
@@ -219,8 +223,6 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			for(String str: result){
 				serverReply = serverReply + "\n" +str;	
 			}
-		}
-
 		return serverReply;
 	}
 
@@ -230,7 +232,10 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			return "This message has already been received";
 
 		}
-		
+    else{
+      db.addNonce(src.toString(), nonce);
+    }	
+
 		if(!verifySession(src))
 			return "Not in Session";
 
@@ -242,12 +247,10 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 
 		int newBalance = db.getBalance(src.toString()) - amount;
 		if(newBalance < 0)
-			return "NACK";
-
+			return "WARNING: Insuficient balance!";
 		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance);
 		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
-
-		return "ACK";
+		return "Sucess, transaction is now pending";
 	}
 
 	@Override
@@ -255,6 +258,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
 		}
+    else{
+      db.addNonce(pubKey.toString(), nonce);
+    }	
 		if(!verifySession(pubKey))
 			return "Not in Session";
 		try {
@@ -264,7 +270,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 
 		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
-		return "ACK";
+		return "TCHATCHING, check your new balance";
 	}	
 
 	@Override
@@ -272,6 +278,9 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
 		}
+    else{
+      db.addNonce(pubKey.toString(), nonce);
+    }	
 		List<String> output = db.getAllTransfers(audited);
 		String serverReply = "";
 		for(String str: output){
@@ -289,6 +298,18 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException{
 		List<String> output = db.pedingTransactionsList(pubKey.toString());
 		return output;
+	}
+
+	private boolean verifySignature(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+		
+		Signature sig = Signature.getInstance("SHA1withRSA");
+		sig.initVerify(pubKey);
+		sig.update(nonce.getBytes());
+		if(!sig.verify(signature))
+			return false;
+		
+		return true;
+
 	}
 
 }

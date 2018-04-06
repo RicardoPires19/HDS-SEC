@@ -12,15 +12,13 @@ class MysqlCon{
 		try{  
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
 			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?"
-                            + "user=root&password=root");
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) NOT NULL, Balance INT NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
+                            + "user=root&password=root");	
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) primary key NOT NULL, Balance INT NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
-		}catch(Exception e){ System.out.println(e);}  
+		}catch(Exception e){ e.printStackTrace();}  
 
-	}  
-
-
+	}
 	public int getBalance(String pK) {
 		int balance=-1;
 		try {
@@ -29,7 +27,7 @@ class MysqlCon{
 			st.setString(1, pK);
 			rs=st.executeQuery();
 			while(rs.next())  {
-//				String publicKey = rs.getString("publicKey");
+				String publicKey = rs.getString("publicKey");
 				balance = rs.getInt("Balance");
 				//System.out.println(" GET BALANCE FROM: " + publicKey +" Result: "+ balance);  
 			}
@@ -63,7 +61,7 @@ class MysqlCon{
 		return returning;
 	}
 
-	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
+	public void addNonce(String PublicKey, String Nonce) { //kjÃ¸rer bare dersom den ikke finnes der fra fÃ¸r av
 
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
 
@@ -84,8 +82,6 @@ class MysqlCon{
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
 		final String sql = "select * from Nonces where publicKey_sender= ? and nonce = ?";
-		System.out.println("checkNonce: nonce:"+nonce+" key:"+PK);
-
 		try {
 			st=con.prepareStatement(sql);
 			st.setString(1, PK);
@@ -186,8 +182,6 @@ class MysqlCon{
 		}
 
 
-	}
-
 	public List<String> getIncomingPendingTransfers(String publicKey) {
 		List<String> outputList = new ArrayList<>();
 		final String sql_get_pending_tranfers= "select * from Ledgers where PublicKey_receiver=? and status='pending'";				
@@ -197,7 +191,7 @@ class MysqlCon{
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String src = rs.getString("publicKey_sender");
-//				String dst = rs.getString("publicKey_receiver");
+				String dst = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
 				String output = "SENDER: " + src + "\n AMOUNT: " + amount ;
 				outputList.add(output);
@@ -262,10 +256,9 @@ class MysqlCon{
 
 		final String sql = "update Ledgers set status='accepted'"
 				+ " where ID= ?";
+		final String sql3 = "select amount from Ledgers where ID=?";
 
-		final String sql3 = "select amount from Ledger where ID=?";
-
-		final String sql2 = "Update Accounts set Balance = Balance+? where PublicKey_receiver=?";
+		final String sql2 = "Update Accounts set balance = balance+? where PublicKey=?";
 		int amount = -1;
 		try {
 			con.setAutoCommit(false);
@@ -292,7 +285,6 @@ class MysqlCon{
 			st.executeUpdate(); //this is the amount that will be added to the account of the receiver
 			System.out.println("Money transferred"); 
 			con.commit(); //either all or non of these things happen
-
 
 		}catch (SQLException e) {
 			// TODO Auto-generated catch block
