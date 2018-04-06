@@ -217,7 +217,7 @@ public class RMIClient {
 			String concatenation = pubKey + nonce;
 			//			serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString())).toString();
 			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(concatenation, secretKey));
-			int res = JOptionPane.showConfirmDialog(null, serverReply.toString(), "Account Info", 
+			int res = JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
 			if(res == JOptionPane.OK_OPTION){

@@ -263,9 +263,9 @@ class MysqlCon{
 		final String sql = "update Ledgers set status='accepted'"
 				+ " where ID= ?";
 
-		final String sql3 = "select amount from Ledger where ID=?";
+		final String sql3 = "select amount from Ledgers where ID=?";
 
-		final String sql2 = "Update Accounts set Balance = Balance+? where PublicKey_receiver=?";
+		final String sql2 = "Update Accounts set Balance = Balance+? where PublicKey=?";
 		int amount = -1;
 		try {
 			con.setAutoCommit(false);

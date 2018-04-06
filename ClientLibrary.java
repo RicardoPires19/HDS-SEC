@@ -222,7 +222,8 @@ public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws 
 		for(String str: result){
 			serverReply = serverReply + "\n" +str;	
 		}
-	return serverReply;
+	byte[] sig = createSignature(serverReply);
+	return serverReply + "-" + sig;
 	}
 }
 
