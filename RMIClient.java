@@ -66,8 +66,8 @@ public class RMIClient {
 			try {
 				RMIDemo = (Client)Naming.lookup(url);
 
-				akg = new AsymmetricKeyGenerator(512, "ServerKey");
-				akg.createKeys();
+				akg = new AsymmetricKeyGenerator(512, "ClientKey");
+				akg.createKeyPair();
 				priKey = akg.getPrivateKey();
 				pubKey = akg.getPublicKey();
 				pubKeyBytes = pubKey.getEncoded();

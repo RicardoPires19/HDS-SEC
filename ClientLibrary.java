@@ -46,6 +46,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
 		akg = new AsymmetricKeyGenerator(512, "ServerKey");
+		akg.createKeyPair();
 		sc = new SymetricKeyGenerator();
 		new AsymmetricCryptography();
 		db = new MysqlCon();
