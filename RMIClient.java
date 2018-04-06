@@ -215,8 +215,9 @@ public class RMIClient {
 		String serverReply;
 
 		try {
+			String concatenation = pubKey + nonce;
 			//			serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString())).toString();
-			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(nonce, secretKey));
+			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(concatenation, secretKey));
 			int res = JOptionPane.showConfirmDialog(null, serverReply.toString(), "Account Info", 
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
@@ -257,7 +258,8 @@ public class RMIClient {
 			String serverReply;
 			try {
 				//				serverReply = RMIDemo.sendAmount(pubKey, pubKey, Integer.parseInt(res.toString()), nonce, createSignature(nonce));
-				serverReply = RMIDemo.sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, mV.createHmac(nonce, secretKey));
+				String concatenation = pubKey+choice+Integer.parseInt(res.toString())+nonce;
+				serverReply = RMIDemo.sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, mV.createHmac(concatenation, secretKey));
 				JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 						JOptionPane.CANCEL_OPTION,
 						JOptionPane.INFORMATION_MESSAGE); // Initial choice);
@@ -300,7 +302,8 @@ public class RMIClient {
 				String serverReply;
 				try {
 					//					serverReply = RMIDemo.receiveAmount(pubKey,result_id,nonce,createSignature(nonce));
-					serverReply = RMIDemo.receiveAmount(pubKey, result_id, nonce, mV.createHmac(nonce, secretKey));
+					String concatenation = nonce + pubKey + result_id;
+					serverReply = RMIDemo.receiveAmount(pubKey, result_id, nonce, mV.createHmac(concatenation, secretKey));
 					JOptionPane.showConfirmDialog(null, serverReply, "Account Info", 
 							JOptionPane.CANCEL_OPTION,
 							JOptionPane.INFORMATION_MESSAGE);

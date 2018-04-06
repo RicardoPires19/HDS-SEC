@@ -199,12 +199,13 @@ public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws 
 		db.addNonce(pubKey.toString(), nonce);
 	}	
 	String serverReply = "";
+	String concatenation = pubKey + nonce;
 
 	if(!verifySession(pubKey))
 		return "Not in Session";
 
 	try {
-		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
+		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), concatenation);
 	} catch (Exception e) {
 		throw new AuthenticationException("Could not authenticate");
 	}
@@ -237,9 +238,11 @@ public String sendAmount(PublicKey src, String dst, int amount, String nonce, by
 
 	if(!verifySession(src))
 		return "Not in Session";
+	
+	String concatenation = src+dst+amount+nonce;
 
 	try {
-		macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), nonce);
+		macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), concatenation);
 	} catch (Exception e) {
 		throw new AuthenticationException("Could not authenticate");
 	}
@@ -262,8 +265,10 @@ public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac)
 	}	
 	if(!verifySession(pubKey))
 		return "Not in Session";
+	
+	String concatenation = nonce + pubKey + id;
 	try {
-		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
+		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), concatenation);
 	} catch (Exception e) {
 		throw new AuthenticationException("Could not authenticate");
 	}
