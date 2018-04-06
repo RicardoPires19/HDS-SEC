@@ -58,24 +58,24 @@ public class RMIClient {
 	private static SecretKey secretKey;
 	private static Client RMIDemo;
 	private static final verifyMac mV = new verifyMac();
-	
+
 
 	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException, InvalidKeyException, SignatureException, InvalidKeySpecException, NumberFormatException, SQLException{
 		if (args.length == 1) {
 			String url = new String("rmi://"+args[0]+"/RMIDemo");
-				RMIClient.RMIDemo = (Client)Naming.lookup(url);
-				try {
-					startMenu();
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+			RMIClient.RMIDemo = (Client)Naming.lookup(url);
+			try {
+				startMenu();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		else {
 			System.err.println("Usage: RMIDemoClient <server>");
 		}
 	}
-	
+
 	public static void createOrReadKeys(String user){
 		try {
 			pubKey = AsymetricEncription.KeyStorage.readPublicKey(user);
@@ -91,20 +91,20 @@ public class RMIClient {
 			}
 		}
 	}
-	
+
 	public static void startMenu() throws Exception{
 		Object[] options = {"LOGIN",
-        "REGISTER","NVM, BYE!"};
-		
+				"REGISTER","NVM, BYE!"};
+
 		int res = JOptionPane.showOptionDialog(null,
-			"Welcome to HDS Coin",
-			"HDS Coin",
-			JOptionPane.YES_NO_CANCEL_OPTION,
-			JOptionPane.QUESTION_MESSAGE,
-			null,
-			options,
-			options[0]);
-		
+				"Welcome to HDS Coin",
+				"HDS Coin",
+				JOptionPane.YES_NO_CANCEL_OPTION,
+				JOptionPane.QUESTION_MESSAGE,
+				null,
+				options,
+				options[0]);
+
 		if(res ==0){
 			loginMenu();
 		}
@@ -112,12 +112,12 @@ public class RMIClient {
 			registerMenu();
 		}
 	}
-	
+
 	public static void loginMenu() throws Exception{
 		SecretKey serverReply;
 		String res = JOptionPane.showInputDialog(null, "Input Username:", "Register", 
 				JOptionPane.OK_CANCEL_OPTION,null, null, JOptionPane.PLAIN_MESSAGE).toString();
-		
+
 		if(res!=null){
 			createOrReadKeys(res);
 			String nonce = RMIDemo.createNonce(pubKey);
@@ -137,17 +137,17 @@ public class RMIClient {
 		else{
 			startMenu();
 		}
-		
+
 	}
-	
+
 	public static void registerMenu() throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, NumberFormatException, UnsupportedEncodingException, SQLException{
-		
+
 		SecretKey serverReply;
-		
+
 		String res = JOptionPane.showInputDialog(null, "Select your username:", "Register", 
 				JOptionPane.OK_CANCEL_OPTION,
 				null, null, JOptionPane.PLAIN_MESSAGE).toString();
-		
+
 		if(res!=null){
 			createOrReadKeys(res);
 			String nonce = RMIDemo.createNonce(pubKey);
@@ -156,7 +156,7 @@ public class RMIClient {
 				if(serverReply == null){
 					registerMenu();
 					System.out.println("serverReply: " + serverReply);
-	
+
 					return;
 				}
 				secretKey = serverReply;
@@ -171,7 +171,7 @@ public class RMIClient {
 	}
 
 	public static void mainMenu(String serverReply) throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-		
+
 		Object[] options = {"Check Account", "Send Amount","Receive Amount", "Audit", "Logout"};
 		int res = JOptionPane.showOptionDialog(null, serverReply,
 				"HDS Coin",
@@ -194,13 +194,13 @@ public class RMIClient {
 		return;
 
 		case 4: try {
-				String nonce = RMIDemo.createNonce(pubKey);
-				RMIDemo.logout(pubKey, nonce, createSignature(nonce,priKey));
-				startMenu();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			String nonce = RMIDemo.createNonce(pubKey);
+			RMIDemo.logout(pubKey, nonce, createSignature(nonce,priKey));
+			startMenu();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return;
 
 		default:goodbyeMenu();
@@ -320,7 +320,7 @@ public class RMIClient {
 
 	public static void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 
-		
+
 		List<String> dest_choices = RMIDemo.getPublicKeys(pubKey);
 		Object[] obj = dest_choices.toArray();
 
@@ -331,12 +331,19 @@ public class RMIClient {
 
 		if(choice != null){
 			String nonce = RMIDemo.createNonce(pubKey);
-			String serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce,priKey));
-			JOptionPane.showConfirmDialog(null, serverReply,
-					"Auditing " + choice,
-					JOptionPane.PLAIN_MESSAGE,
-					JOptionPane.INFORMATION_MESSAGE);
-			mainMenu("Whut u wanna do now?");
+			String serverReply;
+			try {
+				serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce,priKey));
+				String[] result = serverReply.split("-");
+				mV.verifyHMAC(result[1].getBytes(), secretKey, result[0]);
+				JOptionPane.showConfirmDialog(null, result[0],
+						"Auditing " + choice,
+						JOptionPane.PLAIN_MESSAGE,
+						JOptionPane.INFORMATION_MESSAGE);
+				mainMenu("Whut u wanna do now?");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		else{
 			mainMenu("Whut u wanna do now?");

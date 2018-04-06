@@ -17,6 +17,7 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.sql.SQLException;
 import java.util.Calendar;
@@ -191,7 +192,7 @@ public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) thro
 }
 
 @Override
-public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
+public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 	if(db.checkNonce(nonce, pubKey.toString())){
 		return "This message has already been received";
 	}
@@ -222,8 +223,8 @@ public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws 
 		for(String str: result){
 			serverReply = serverReply + "\n" +str;	
 		}
-	byte[] sig = createSignature(serverReply);
-	return serverReply + "-" + sig;
+	byte[] hmac1 = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
+	return serverReply + "-" + hmac1;
 	}
 }
 
@@ -279,7 +280,7 @@ public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac)
 }	
 
 @Override
-public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {
+public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 	if(db.checkNonce(nonce, pubKey.toString())){
 		return "This message has already been received";
 	}
@@ -291,7 +292,8 @@ public String audit(PublicKey pubKey,String audited, String nonce, byte[] signat
 	for(String str: output){
 		serverReply = serverReply + str + "\n";
 	}
-	return serverReply;
+	byte[] hmac = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
+	return serverReply + "-" + hmac;
 }
 
 @Override
