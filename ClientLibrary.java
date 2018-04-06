@@ -124,18 +124,44 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(db.checkNonce(nonce, pubKey.toString()))
 			throw new AuthenticationException("Could not authenticate");
 		else{
+<<<<<<< HEAD
+      db.addNonce(pubKey.toString(), nonce);
+    }	
+    if(!verifySignature(pubKey,nonce,signature))
+			throw new AuthenticationException("You are not authorized to log in");
+    
+		if(!verifySignature(pubKey,nonce,signature))
+=======
       db.addNonce(src.toString(), nonce);
     }	
     if(!verifySignature(pubKey,nounce,signature))
 			throw new AuthenticationException("You are not authorized to log in");
     
 		if(!sig.verify(signature))
+>>>>>>> origin/sonicjammy
 			throw new AuthenticationException("You are not authorized to register");
 		else{
 			Sessions.remove(pubKey.toString());
 		}
 	}
 	
+<<<<<<< HEAD
+
+	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
+		if(db.checkNonce(nonce, pubKey.toString())){
+			throw new AuthenticationException("This message has already been received");
+		}
+		else{
+			db.addNonce(pubKey.toString(), nonce.toString());
+		}
+		if(!db.checkClient(pubKey.toString())) {
+			throw new AuthenticationException("This public key is not registered");
+		}
+		
+		if(!verifySignature(pubKey,nonce,signature)){
+			throw new AuthenticationException("This message has been tampered");
+		}
+=======
 
 	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
 		if(db.checkNonce(nonce, pubKey.toString())){
@@ -153,6 +179,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 
 		if(!sig.verify(signature))
 			throw new AuthenticationException("You are not authorized to log in");
+>>>>>>> origin/sonicjammy
     
 		Calendar date = Calendar.getInstance();
 		date.setTime(new Date());
@@ -168,19 +195,29 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
+<<<<<<< HEAD
+	    else{
+	      db.addNonce(pubKey.toString(), nonce);
+	    }	
+=======
     else{
       db.addNonce(pubKey.toString(), nonce);
     }	
+>>>>>>> origin/sonicjammy
 		if(!verifySignature(pubKey,nonce,signature)){
-			throw new AuthenticationException("You are not authorized to log in");
+			throw new AuthenticationException("You are not authorized to register");
 		}
 		
 		if(db.checkClient(pubKey.toString())) {
 			throw new AuthenticationException("This public key is already registered");
 		}
+<<<<<<< HEAD
+		db.AddClient(pubKey.toString(), 100);
+=======
 «		db.AddClient(pubKey.toString(), 100);
 		//		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
 		//		balance.put(key, 5);
+>>>>>>> origin/sonicjammy
 
 		Calendar date = Calendar.getInstance();
 		date.setTime(new Date());
@@ -223,7 +260,12 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 			for(String str: result){
 				serverReply = serverReply + "\n" +str;	
 			}
+<<<<<<< HEAD
+		}
+=======
+>>>>>>> origin/sonicjammy
 		return serverReply;
+		
 	}
 
 	@Override
