@@ -44,6 +44,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private final SecureRandom nonce = new SecureRandom();
 	private final verifyMac macVerifier = new verifyMac();
 	private final SecureRandom random;
+	
 
 	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
@@ -71,7 +72,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 
 		return true;
 	}
-
+	
 	private void storeKey(PublicKey pubKey, SecretKey clientKey){
 		KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(PASSWORD);
 		KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(clientKey);
@@ -99,28 +100,11 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		String Nonce = Integer.toString(nonce.nextInt());
 		return Nonce;
 	}
-
-	public byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
-		PrivateKey privateKey = akg.getPrivateKey();
-
-		byte[] data;
-		try {
-			data = input.getBytes("UTF8");
-			Signature sig = Signature.getInstance("SHA1WithRSA");
-			sig.initSign(privateKey);
-			sig.update(data);
-			byte[] signatureBytes = sig.sign();
-			return signatureBytes;
-		} catch (UnsupportedEncodingException | NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
 	
-	public void logout(Key pubKey, String nonce, byte[] encNonce) throws AuthenticationException{
-		String check = ac.Decrypt(pubKey, encNonce);
-		if(!nonce.equals(check))
-			throw new AuthenticationException("Could not authenticate");
+	public void logout(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, InvalidKeyException, NoSuchAlgorithmException, SignatureException{
+		if(!verifySignature(pubKey,nonce,signature)){
+			throw new AuthenticationException("You are not authorized to log in");
+		}
 		else{
 			Sessions.remove(pubKey.toString());
 		}
@@ -131,8 +115,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(!verifySignature(pubKey,nounce,signature))
 			throw new AuthenticationException("You are not authorized to log in");
 
-		String pk = pubKey.toString();
-		if (!db.checkClient(pk))
+		if (!db.checkClient(pubKey.toString()))
 			throw new AuthenticationException("This user does not exist, please register or try again");
 
 		Calendar date = Calendar.getInstance();
@@ -149,17 +132,13 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
-
+		if(!verifySignature(pubKey,nonce,signature)){
+			throw new AuthenticationException("You are not authorized to log in");
+		}
+		
 		if(db.checkClient(pubKey.toString())) {
 			throw new AuthenticationException("This public key is already registered");
 		}
-
-		Signature sig = Signature.getInstance("SHA1withRSA");
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-		if(!sig.verify(signature))
-			throw new AuthenticationException("You are not authorized to register");
-
 		db.addNonce(pubKey.toString(), nonce.toString());
 		db.AddClient(pubKey.toString(), 100);
 		//		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
@@ -179,7 +158,6 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			return "This message has already been received";
-
 		}
 		String serverReply = "";
 
@@ -196,7 +174,6 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		int balance = db.getBalance(pubKey.toString()); //returns int
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
 		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
-		System.out.println("result 255: " + result);
 		if(result.isEmpty()){
 			return serverReply;
 		}
@@ -206,7 +183,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 				serverReply = serverReply + "\n" +str;	
 			}
 		}
-
+		System.out.println(serverReply.toString());
 		return serverReply;
 	}
 
@@ -294,6 +271,5 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		return true;
 
 	}
-	
 
 }

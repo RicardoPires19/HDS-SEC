@@ -15,7 +15,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
-//import java.security.KeyStore;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -41,7 +41,7 @@ import javax.swing.JTextField;
 
 import AsymetricEncription.AsymmetricCryptography;
 import AsymetricEncription.AsymmetricKeyGenerator;
-import AsymetricEncription.KeyStore;
+import AsymetricEncription.KeyStorage;
 
 @SuppressWarnings("unused")
 public class RMIClient {
@@ -55,8 +55,8 @@ public class RMIClient {
 	public static PublicKey pubKey;
 	public static PrivateKey priKey;
 	public static byte[] pubKeyBytes;
-	public static Client RMIDemo;
 	public static SecretKey secretKey;
+	public static Client RMIDemo;
 	private static final verifyMac mV = new verifyMac();
 	
 
@@ -78,13 +78,13 @@ public class RMIClient {
 	
 	public static void createOrReadKeys(String user){
 		try {
-			pubKey = KeyStore.readPublicKey(user);
-			priKey = KeyStore.readPrivateKey(user);
+			pubKey = KeyStorage.readPublicKey(user);
+			priKey = KeyStorage.readPrivateKey(user);
 		} catch (Exception e) {
 			try {
-				KeyStore.createKeyPair(user);
-				pubKey = KeyStore.readPublicKey(user);
-				priKey = KeyStore.readPrivateKey(user);
+				KeyStorage.createKeyPair(user);
+				pubKey = KeyStorage.readPublicKey(user);
+				priKey = KeyStorage.readPrivateKey(user);
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -121,14 +121,12 @@ public class RMIClient {
 		if(res!=null){
 			createOrReadKeys(res);
 			String nonce = RMIDemo.createNonce(pubKey);
-			System.out.println(createSignature(nonce).toString());
 			try {
-				serverReply = RMIDemo.login(pubKey,nonce, createSignature(nonce));	
+				serverReply = RMIDemo.login(pubKey,nonce, createSignature(nonce,priKey));	
 				if(serverReply == null){
 					loginMenu();
 					return;
 				}
-
 				secretKey = serverReply;
 				mainMenu("Login Sucessful");
 
@@ -153,16 +151,13 @@ public class RMIClient {
 		if(res!=null){
 			createOrReadKeys(res);
 			String nonce = RMIDemo.createNonce(pubKey);
-			System.out.println(createSignature(nonce).toString());
 			try {
-				serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce));
+				serverReply = RMIDemo.register(pubKey,nonce, createSignature(nonce,priKey));
 				if(serverReply == null){
 					registerMenu();
 					System.out.println("serverReply: " + serverReply);
 					return;
 				}
-
-				secretKey = serverReply;
 				mainMenu("Registration Sucessful");
 			} catch (AuthenticationException e) {
 				System.out.println("Authentication Failure");
@@ -174,7 +169,7 @@ public class RMIClient {
 	}
 
 	public static void mainMenu(String serverReply) throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-
+		
 		Object[] options = {"Check Account", "Send Amount","Receive Amount", "Audit", "Logout"};
 		int res = JOptionPane.showOptionDialog(null, serverReply,
 				"HDS Coin",
@@ -197,6 +192,8 @@ public class RMIClient {
 		return;
 
 		case 4: try {
+				String nonce = RMIDemo.createNonce(pubKey);
+				RMIDemo.logout(pubKey, nonce, createSignature(nonce,priKey));
 				startMenu();
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -329,7 +326,7 @@ public class RMIClient {
 
 		if(choice != null){
 			String nonce = RMIDemo.createNonce(pubKey);
-			String serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce));
+			String serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce,priKey));
 			JOptionPane.showConfirmDialog(null, serverReply,
 					"Auditing " + choice,
 					JOptionPane.PLAIN_MESSAGE,
@@ -355,12 +352,12 @@ public class RMIClient {
 	//		return Nonce;
 	//	}
 
-	public static byte[] createSignature(String input) {  //input can be both a nonce or a HMAC
+	public static byte[] createSignature(String input,PrivateKey privKey) {  //input can be both a nonce or a HMAC
 		byte[] data;
 		try {
 			data = input.getBytes("UTF8");
 			Signature sig = Signature.getInstance("SHA1WithRSA");
-			sig.initSign(priKey);
+			sig.initSign(privKey);
 			sig.update(data);
 			byte[] signatureBytes = sig.sign();
 			return signatureBytes;

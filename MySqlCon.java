@@ -19,9 +19,7 @@ class MysqlCon{
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
 		}catch(Exception e){ e.printStackTrace();}  
 
-	}  
-
-
+	}
 	public int getBalance(String pK) {
 		int balance=-1;
 		try {
@@ -85,7 +83,6 @@ class MysqlCon{
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
 		final String sql = "select * from Nonces where publicKey_sender= ? and nonce = ?";
-		System.out.println("checkNonce: nonce:"+nonce+" key:"+PK);
 
 		try {
 			st=con.prepareStatement(sql);

@@ -17,6 +17,9 @@ public interface Client extends Remote {
 
 	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException;
 	public SecretKey login(PublicKey pubKey,String nounce,byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException;
+	
+	public void logout(PublicKey pubKey,String nonce, byte[] signature) throws RemoteException, AuthenticationException, InvalidKeyException, NoSuchAlgorithmException, SignatureException;
+	
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
