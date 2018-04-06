@@ -43,7 +43,7 @@ import AsymetricEncription.AsymmetricCryptography;
 import AsymetricEncription.AsymmetricKeyGenerator;
 
 @SuppressWarnings("unused")
-public class RMIClient {
+public class testRMIClient {
 	private static char[] PASSWORD = {'a','b'};
 	private static AsymmetricCryptography ac;
 	private static AsymmetricKeyGenerator akg;
@@ -67,7 +67,7 @@ public class RMIClient {
 				RMIDemo = (Client)Naming.lookup(url);
 
 				akg = new AsymmetricKeyGenerator(512, "ServerKey");
-				akg.createKeys();
+				akg.createKeyPair();
 				priKey = akg.getPrivateKey();
 				pubKey = akg.getPublicKey();
 				pubKeyBytes = pubKey.getEncoded();

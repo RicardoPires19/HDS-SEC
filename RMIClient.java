@@ -52,18 +52,19 @@ public class RMIClient {
 	private static MysqlCon db;
 	private static KeyStore ks;
 	private static KeyFactory kf;
-	public static PublicKey pubKey;
-	public static PrivateKey priKey;
-	public static byte[] pubKeyBytes;
-	public static SecretKey secretKey;
-	public static Client RMIDemo;
+	private static PublicKey pubKey;
+	private static PrivateKey priKey;
+	private static byte[] pubKeyBytes;
+	private static SecretKey secretKey;
+	private static Client RMIDemo;
 	private static final verifyMac mV = new verifyMac();
 	
 
 	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException, InvalidKeyException, SignatureException, InvalidKeySpecException, NumberFormatException, SQLException{
+		RMIClient rmiC = new RMIClient();
 		if (args.length == 1) {
 			String url = new String("rmi://"+args[0]+"/RMIDemo");
-				RMIDemo = (Client)Naming.lookup(url);
+				rmiC.RMIDemo = (Client)Naming.lookup(url);
 				try {
 					startMenu();
 				} catch (Exception e) {
@@ -78,13 +79,13 @@ public class RMIClient {
 	
 	public static void createOrReadKeys(String user){
 		try {
-			pubKey = KeyStorage.readPublicKey(user);
-			priKey = KeyStorage.readPrivateKey(user);
+			pubKey = AsymetricEncription.KeyStorage.readPublicKey(user);
+			priKey = AsymetricEncription.KeyStorage.readPrivateKey(user);
 		} catch (Exception e) {
 			try {
-				KeyStorage.createKeyPair(user);
-				pubKey = KeyStorage.readPublicKey(user);
-				priKey = KeyStorage.readPrivateKey(user);
+				AsymetricEncription.KeyStorage.createKeyPair(user);
+				pubKey = AsymetricEncription.KeyStorage.readPublicKey(user);
+				priKey = AsymetricEncription.KeyStorage.readPrivateKey(user);
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();

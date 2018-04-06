@@ -30,7 +30,7 @@ import javax.security.sasl.AuthenticationException;
 import AsymetricEncription.AsymmetricCryptography;
 import AsymetricEncription.AsymmetricKeyGenerator;
 
-public class ClientLibrary extends UnicastRemoteObject implements Client{
+public class testClientLibrary extends UnicastRemoteObject implements Client{
 	private static final long serialVersionUID = 1L;
 	private final AsymmetricKeyGenerator akg;
 	private final SymetricKeyGenerator sc;
@@ -43,7 +43,7 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 	private final verifyMac macVerifier = new verifyMac();
 	private final SecureRandom random;
 
-	protected ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
+	protected testClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
 		akg = new AsymmetricKeyGenerator(512, "ServerKey");
 		sc = new SymetricKeyGenerator();

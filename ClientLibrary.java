@@ -118,240 +118,197 @@ public class ClientLibrary extends UnicastRemoteObject implements Client{
 		}
 		return null;
 	}
-	
+
 	@Override
 	public void logout(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{
 		if(db.checkNonce(nonce, pubKey.toString()))
 			throw new AuthenticationException("Could not authenticate");
 		else{
-<<<<<<< HEAD
-      db.addNonce(pubKey.toString(), nonce);
-    }	
-    if(!verifySignature(pubKey,nonce,signature))
-			throw new AuthenticationException("You are not authorized to log in");
-    
+			db.addNonce(pubKey.toString(), nonce);
+		}	
 		if(!verifySignature(pubKey,nonce,signature))
-=======
-      db.addNonce(src.toString(), nonce);
-    }	
-    if(!verifySignature(pubKey,nounce,signature))
-			throw new AuthenticationException("You are not authorized to log in");
-    
-		if(!sig.verify(signature))
->>>>>>> origin/sonicjammy
-			throw new AuthenticationException("You are not authorized to register");
+			throw new AuthenticationException("You are not authorized to log out");
 		else{
 			Sessions.remove(pubKey.toString());
 		}
-	}
 	
-<<<<<<< HEAD
+}
 
-	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
-		if(db.checkNonce(nonce, pubKey.toString())){
-			throw new AuthenticationException("This message has already been received");
-		}
-		else{
-			db.addNonce(pubKey.toString(), nonce.toString());
-		}
-		if(!db.checkClient(pubKey.toString())) {
-			throw new AuthenticationException("This public key is not registered");
-		}
-		
-		if(!verifySignature(pubKey,nonce,signature)){
-			throw new AuthenticationException("This message has been tampered");
-		}
-=======
 
-	public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
-		if(db.checkNonce(nonce, pubKey.toString())){
-			throw new AuthenticationException("This message has already been received");
-		}
-		db.addNonce(pubKey.toString(), nonce.toString());
-		
-		if(!db.checkClient(pubKey.toString())) {
-			throw new AuthenticationException("This public key is not registered");
-		}
-		
-		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
 
-		if(!sig.verify(signature))
-			throw new AuthenticationException("You are not authorized to log in");
->>>>>>> origin/sonicjammy
-    
-		Calendar date = Calendar.getInstance();
-		date.setTime(new Date());
-		date.add(Calendar.MINUTE, SESSIONTIME);
-		Sessions.put(pubKey.toString(), date);
-		sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
-		storeKey(pubKey, sc.getSecretKey());
-		return sc.getSecretKey();
+public SecretKey login(PublicKey pubKey, String nonce, byte[] signature) throws AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException{ //byte[] encNonce is the output of createsignature
+	if(db.checkNonce(nonce, pubKey.toString())){
+		throw new AuthenticationException("This message has already been received");
+	}
+	db.addNonce(pubKey.toString(), nonce.toString());
+
+	if(!db.checkClient(pubKey.toString())) {
+		throw new AuthenticationException("This public key is not registered");
 	}
 
-	@Override
-	public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			throw new AuthenticationException("This message has already been received");
-		}
-<<<<<<< HEAD
-	    else{
-	      db.addNonce(pubKey.toString(), nonce);
-	    }	
-=======
-    else{
-      db.addNonce(pubKey.toString(), nonce);
-    }	
->>>>>>> origin/sonicjammy
-		if(!verifySignature(pubKey,nonce,signature)){
-			throw new AuthenticationException("You are not authorized to register");
-		}
-		
-		if(db.checkClient(pubKey.toString())) {
-			throw new AuthenticationException("This public key is already registered");
-		}
-<<<<<<< HEAD
-		db.AddClient(pubKey.toString(), 100);
-=======
-«		db.AddClient(pubKey.toString(), 100);
-		//		ledger.put(key, new ArrayList<String>()); //dunno how to make ledgers, doesn't matter, its just implement for the sql
-		//		balance.put(key, 5);
->>>>>>> origin/sonicjammy
+	Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+	sig.initVerify(pubKey);
+	sig.update(nonce.getBytes());
 
-		Calendar date = Calendar.getInstance();
-		date.setTime(new Date());
-		date.add(Calendar.MINUTE, SESSIONTIME);
-		Sessions.put(pubKey.toString(), date);
-		sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
-		storeKey(pubKey, sc.getSecretKey());
-		
-		return sc.getSecretKey();
+	if(!sig.verify(signature))
+		throw new AuthenticationException("You are not authorized to log in");
+
+
+	Calendar date = Calendar.getInstance();
+	date.setTime(new Date());
+	date.add(Calendar.MINUTE, SESSIONTIME);
+	Sessions.put(pubKey.toString(), date);
+	sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
+	storeKey(pubKey, sc.getSecretKey());
+	return sc.getSecretKey();
+}
+
+@Override
+public SecretKey register(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException {
+	if(db.checkNonce(nonce, pubKey.toString())){
+		throw new AuthenticationException("This message has already been received");
+	}
+	else{
+		db.addNonce(pubKey.toString(), nonce);
+	}	
+	if(!verifySignature(pubKey,nonce,signature)){
+		throw new AuthenticationException("You are not authorized to register");
 	}
 
-	@Override
-	public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-		}
-    else{
-      db.addNonce(pubKey.toString(), nonce);
-    }	
-		String serverReply = "";
+	if(db.checkClient(pubKey.toString())) {
+		throw new AuthenticationException("This public key is already registered");
+	}
+	db.AddClient(pubKey.toString(), 100);
 
-		if(!verifySession(pubKey))
-			return "Not in Session";
+	Calendar date = Calendar.getInstance();
+	date.setTime(new Date());
+	date.add(Calendar.MINUTE, SESSIONTIME);
+	Sessions.put(pubKey.toString(), date);
+	sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
+	storeKey(pubKey, sc.getSecretKey());
 
-		try {
-			macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
-		} catch (Exception e) {
-			throw new AuthenticationException("Could not authenticate");
-		}
+	return sc.getSecretKey();
+}
+
+@Override
+public String checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws RemoteException, AuthenticationException {
+	if(db.checkNonce(nonce, pubKey.toString())){
+		return "This message has already been received";
+	}
+	else{
+		db.addNonce(pubKey.toString(), nonce);
+	}	
+	String serverReply = "";
+
+	if(!verifySession(pubKey))
+		return "Not in Session";
+
+	try {
+		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
+	} catch (Exception e) {
+		throw new AuthenticationException("Could not authenticate");
+	}
 
 
-		int balance = db.getBalance(pubKey.toString()); //returns int
-		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
-		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
-		if(result.isEmpty()){
-			return serverReply;
-		}
-		else{
-			serverReply = serverReply + "\nYou have the following pending:";
-			for(String str: result){
-				serverReply = serverReply + "\n" +str;	
-			}
-<<<<<<< HEAD
-		}
-=======
->>>>>>> origin/sonicjammy
+	int balance = db.getBalance(pubKey.toString()); //returns int
+	serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
+	List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
+	if(result.isEmpty()){
 		return serverReply;
-		
 	}
-
-	@Override
-	public String sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
-		if(db.checkNonce(nonce, src.toString())){
-			return "This message has already been received";
-
+	else{
+		serverReply = serverReply + "\nYou have the following pending:";
+		for(String str: result){
+			serverReply = serverReply + "\n" +str;	
 		}
-    else{
-      db.addNonce(src.toString(), nonce);
-    }	
-
-		if(!verifySession(src))
-			return "Not in Session";
-
-		try {
-			macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), nonce);
-		} catch (Exception e) {
-			throw new AuthenticationException("Could not authenticate");
-		}
-
-		int newBalance = db.getBalance(src.toString()) - amount;
-		if(newBalance < 0)
-			return "WARNING: Insuficient balance!";
-		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance);
-		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
-		return "Sucess, transaction is now pending";
+	return serverReply;
 	}
+}
 
-	@Override
-	public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-		}
-    else{
-      db.addNonce(pubKey.toString(), nonce);
-    }	
-		if(!verifySession(pubKey))
-			return "Not in Session";
-		try {
-			macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
-		} catch (Exception e) {
-			throw new AuthenticationException("Could not authenticate");
-		}
+@Override
+public String sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
+	if(db.checkNonce(nonce, src.toString())){
+		return "This message has already been received";
 
-		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
-		return "TCHATCHING, check your new balance";
+	}
+	else{
+		db.addNonce(src.toString(), nonce);
 	}	
 
-	@Override
-	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {
-		if(db.checkNonce(nonce, pubKey.toString())){
-			return "This message has already been received";
-		}
-    else{
-      db.addNonce(pubKey.toString(), nonce);
-    }	
-		List<String> output = db.getAllTransfers(audited);
-		String serverReply = "";
-		for(String str: output){
-			serverReply = serverReply + str + "\n";
-		}
-		return serverReply;
+	if(!verifySession(src))
+		return "Not in Session";
+
+	try {
+		macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), nonce);
+	} catch (Exception e) {
+		throw new AuthenticationException("Could not authenticate");
 	}
 
-	@Override
-	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException{
-		List<String> output = db.getAllPublicKeys();
-		return output;
+	int newBalance = db.getBalance(src.toString()) - amount;
+	if(newBalance < 0)
+		return "WARNING: Insuficient balance!";
+	db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance);
+	//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen	
+	return "Sucess, transaction is now pending";
+}
+
+@Override
+public String receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac) throws RemoteException, AuthenticationException {
+	if(db.checkNonce(nonce, pubKey.toString())){
+		return "This message has already been received";
 	}
-	@Override
-	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException{
-		List<String> output = db.pedingTransactionsList(pubKey.toString());
-		return output;
+	else{
+		db.addNonce(pubKey.toString(), nonce);
+	}	
+	if(!verifySession(pubKey))
+		return "Not in Session";
+	try {
+		macVerifier.verifyHMAC(hmac, ks.getKey(pubKey.toString(), PASSWORD), nonce);
+	} catch (Exception e) {
+		throw new AuthenticationException("Could not authenticate");
 	}
 
-	private boolean verifySignature(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
-		
-		Signature sig = Signature.getInstance("SHA1withRSA");
-		sig.initVerify(pubKey);
-		sig.update(nonce.getBytes());
-		if(!sig.verify(signature))
-			return false;
-		
-		return true;
+	db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
+	return "TCHATCHING, check your new balance";
+}	
 
+@Override
+public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException {
+	if(db.checkNonce(nonce, pubKey.toString())){
+		return "This message has already been received";
 	}
+	else{
+		db.addNonce(pubKey.toString(), nonce);
+	}	
+	List<String> output = db.getAllTransfers(audited);
+	String serverReply = "";
+	for(String str: output){
+		serverReply = serverReply + str + "\n";
+	}
+	return serverReply;
+}
+
+@Override
+public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException{
+	List<String> output = db.getAllPublicKeys();
+	return output;
+}
+@Override
+public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException{
+	List<String> output = db.pedingTransactionsList(pubKey.toString());
+	return output;
+}
+
+private boolean verifySignature(PublicKey pubKey, String nonce, byte[] signature) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException{
+
+	Signature sig = Signature.getInstance("SHA1withRSA");
+	sig.initVerify(pubKey);
+	sig.update(nonce.getBytes());
+	if(!sig.verify(signature))
+		return false;
+
+	return true;
+
+}
 
 }
