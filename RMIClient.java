@@ -156,8 +156,10 @@ public class RMIClient {
 				if(serverReply == null){
 					registerMenu();
 					System.out.println("serverReply: " + serverReply);
+	
 					return;
 				}
+				secretKey = serverReply;
 				mainMenu("Registration Sucessful");
 			} catch (AuthenticationException e) {
 				System.out.println("Authentication Failure");

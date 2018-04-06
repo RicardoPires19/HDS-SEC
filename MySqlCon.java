@@ -182,6 +182,7 @@ class MysqlCon{
 		}
 
 
+
 	public List<String> getIncomingPendingTransfers(String publicKey) {
 		List<String> outputList = new ArrayList<>();
 		final String sql_get_pending_tranfers= "select * from Ledgers where PublicKey_receiver=? and status='pending'";				
@@ -202,8 +203,6 @@ class MysqlCon{
 			e.printStackTrace();
 		}  
 		return outputList;
-
-		//return (publicKey_sender + publicKey_receiver + " " + amount);	
 	}
 
 	public List<String> getAllTransfers(String publicKey) {
