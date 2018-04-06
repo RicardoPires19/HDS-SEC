@@ -12,8 +12,7 @@ class MysqlCon{
 		try{  
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
 			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?"
-                            + "user=root&password=root");
-			
+                            + "user=root&password=root");	
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) primary key NOT NULL, Balance INT NOT NULL)").executeUpdate();
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
@@ -62,7 +61,7 @@ class MysqlCon{
 		return returning;
 	}
 
-	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
+	public void addNonce(String PublicKey, String Nonce) { //kjÃ¸rer bare dersom den ikke finnes der fra fÃ¸r av
 
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
 
@@ -83,7 +82,6 @@ class MysqlCon{
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
 		final String sql = "select * from Nonces where publicKey_sender= ? and nonce = ?";
-
 		try {
 			st=con.prepareStatement(sql);
 			st.setString(1, PK);
@@ -182,7 +180,7 @@ class MysqlCon{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
+
 
 	public List<String> getIncomingPendingTransfers(String publicKey) {
 		List<String> outputList = new ArrayList<>();
@@ -258,7 +256,6 @@ class MysqlCon{
 
 		final String sql = "update Ledgers set status='accepted'"
 				+ " where ID= ?";
-
 		final String sql3 = "select amount from Ledgers where ID=?";
 
 		final String sql2 = "Update Accounts set balance = balance+? where PublicKey=?";

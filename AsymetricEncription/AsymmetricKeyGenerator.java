@@ -31,7 +31,7 @@ public class AsymmetricKeyGenerator {
 		return publicKey;
 	}
 	
-	private void createKeyPair() {
+	public void createKeyPair() {
 		this.pair = this.keyGen.generateKeyPair();
 		this.privateKey = pair.getPrivate();
 		this.publicKey = pair.getPublic();
@@ -47,8 +47,7 @@ public class AsymmetricKeyGenerator {
 		fos.close();
 	}
 	
-	public void createKeys() {
-		createKeyPair();
+	public void WriteKeys() {
 		try {
 			writeToFile("KeyPair/"+ keyName + "publicKey", publicKey.getEncoded());
 			writeToFile("KeyPair/"+ keyName + "privateKey", privateKey.getEncoded());

@@ -1,0 +1,55 @@
+-- MySQL dump 10.13  Distrib 5.7.17, for macos10.12 (x86_64)
+--
+-- Host: localhost    Database: ACCOUNTDATA
+-- ------------------------------------------------------
+-- Server version	5.7.21
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `Ledger`
+--
+
+DROP TABLE IF EXISTS `Ledger`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `Ledger` (
+  `transactionId` int(11) NOT NULL AUTO_INCREMENT,
+  `PublicKey_sender` varchar(50) NOT NULL,
+  `PublicKey_recevier` varchar(50) NOT NULL,
+  `Amount` int(50) NOT NULL,
+  `reg_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `status` varchar(255) NOT NULL,
+  PRIMARY KEY (`transactionId`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `Ledger`
+--
+
+LOCK TABLES `Ledger` WRITE;
+/*!40000 ALTER TABLE `Ledger` DISABLE KEYS */;
+INSERT INTO `Ledger` VALUES (1,'112','221',4,'2018-03-15 16:02:58',''),(2,'132','221',32,'2018-03-16 12:04:20',''),(6,'115','221',3,'2018-03-16 15:28:42',''),(7,'123','221',40,'2018-03-16 19:42:10','accepted'),(8,'123','221',40,'2018-03-19 00:03:22','accepted'),(9,'111','112',111,'2018-03-17 00:06:17','accepted');
+/*!40000 ALTER TABLE `Ledger` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2018-03-22 11:09:15
