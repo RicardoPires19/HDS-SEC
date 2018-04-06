@@ -161,7 +161,7 @@ public class RMIClient {
 			//			serverReply = RMIDemo.checkAccount(pubKey,nonce, createSignature(nonce),createHash(pubKey.toString())).toString();
 			String concatenation = pubKey + nonce;
 			serverReply = RMIDemo.checkAccount(pubKey, nonce, mV.createHmac(concatenation, secretKey));
-			if (!mV.verifyHMAC(serverReply.substring(serverReply.indexOf(",")).getBytes(), secretKey, serverReply.substring(0,serverReply.indexOf(",")))){
+			if (!mV.verifyHMAC(serverReply.substring(serverReply.indexOf(",")).getBytes(), secretKey, serverReply.substring(0,serverReply.indexOf(":")))){
 				mainMenu("This ledger is not valid, please try again");
 			}
 			int res = JOptionPane.showConfirmDialog(null, serverReply.toString(), "Account Info", 
@@ -283,7 +283,7 @@ public class RMIClient {
 			sig.initVerify(pubKey);
 			sig.update(serverReply.substring(0,serverReply.indexOf(",")).getBytes());
 			
-			if(!sig.verify(serverReply.substring(serverReply.indexOf(",")).getBytes())) {
+			if(!sig.verify(serverReply.substring(serverReply.indexOf(":")).getBytes())) {
 				mainMenu("This ledger is not valid, please try again");
 			}
 			
