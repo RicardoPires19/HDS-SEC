@@ -61,10 +61,9 @@ public class RMIClient {
 	
 
 	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException, InvalidKeyException, SignatureException, InvalidKeySpecException, NumberFormatException, SQLException{
-		RMIClient rmiC = new RMIClient();
 		if (args.length == 1) {
 			String url = new String("rmi://"+args[0]+"/RMIDemo");
-				rmiC.RMIDemo = (Client)Naming.lookup(url);
+				RMIClient.RMIDemo = (Client)Naming.lookup(url);
 				try {
 					startMenu();
 				} catch (Exception e) {
