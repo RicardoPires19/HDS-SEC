@@ -13,10 +13,11 @@ class MysqlCon{
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
 			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?"
                             + "user=root&password=root");
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(2048) NOT NULL, Balance INT NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(2048) NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(2048) NOT NULL, PublicKey_receiver VARCHAR(2048) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
-		}catch(Exception e){ System.out.println(e);}  
+			
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) primary key NOT NULL, Balance INT NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
+			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
+		}catch(Exception e){ e.printStackTrace();}  
 
 	}  
 
@@ -63,7 +64,7 @@ class MysqlCon{
 		return returning;
 	}
 
-	public void addNonce(String PublicKey, String Nonce) { //kjÃ¸rer bare dersom den ikke finnes der fra fÃ¸r av
+	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
 
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
 
@@ -83,7 +84,7 @@ class MysqlCon{
 
 	public boolean checkNonce(String nonce, String PK) {
 		Boolean result = false;
-		final String sql = "select * from Nonces where PublicKey_sender= ? and Nonce = ?";
+		final String sql = "select * from Nonces where publicKey_sender= ? and nonce = ?";
 		System.out.println("checkNonce: nonce:"+nonce+" key:"+PK);
 
 		try {
@@ -92,6 +93,7 @@ class MysqlCon{
 			st.setString(2, nonce);
 			rs=st.executeQuery();
 			if(rs.next())  {
+				System.out.println(rs.getString("nonce"));
 				result = true;
 			}
 			
@@ -100,6 +102,10 @@ class MysqlCon{
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (Exception e) {
+			System.out.println("nonce: " + nonce);
+			System.out.println("PK: " +PK);
+			System.out.println("Exception: " + e);
 		}
 		return result;
 
@@ -134,6 +140,9 @@ class MysqlCon{
 		}
 		catch(SQLException e){
 			e.printStackTrace();
+		} catch(Exception e){
+			System.out.println("PK: " + PK);
+			System.out.println("value: " + initial_value);
 		}
 
 	}
@@ -176,8 +185,6 @@ class MysqlCon{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-
 	}
 
 	public List<String> getIncomingPendingTransfers(String publicKey) {
@@ -217,7 +224,7 @@ class MysqlCon{
 				String publicKey_sender = rs.getString("publicKey_sender");
 				String publicKey_receiver = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
-				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount+ ", Status: " + rs.getString("status");
+				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount;
 				transfers.add(transfer);
 
 			}
@@ -285,7 +292,6 @@ class MysqlCon{
 			System.out.println("Money transferred"); 
 			con.commit(); //either all or non of these things happen
 
-
 		}catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -295,7 +301,7 @@ class MysqlCon{
 
 
 	public List<String> getAllPublicKeys() throws SQLException {
-		final String sql = "SELECT publickey FROM accounts";
+		final String sql = "SELECT PublicKey FROM Accounts";
 		st=con.prepareStatement(sql);
 		rs=st.executeQuery();
 		List<String> resultList = new ArrayList<String>();
@@ -306,5 +312,4 @@ class MysqlCon{
 	}
 
 }  
-
 

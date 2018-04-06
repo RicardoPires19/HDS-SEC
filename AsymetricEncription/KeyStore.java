@@ -10,24 +10,24 @@ public class KeyStore {
 	public KeyStore(){	 
 	}
 	
-	public static void createKeyPair() throws Exception{
+	public static void createKeyPair(String user) throws Exception{
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-		 kpg.initialize(2048);
+		 kpg.initialize(512);
 
 		 KeyPair kp = kpg.genKeyPair();
 
 		 KeyFactory fact = KeyFactory.getInstance("RSA");
-
+		 
+		 File storeFolder = new File("KeyStore");
+		 storeFolder.mkdir();
+		 
 		 RSAPublicKeySpec pub = fact.getKeySpec(kp.getPublic(),
 		        RSAPublicKeySpec.class);
-		 saveToFile("publicKey", 
+		 saveToFile("KeyStore\\publicKey"+user, 
 		        pub.getModulus(), pub.getPublicExponent());
-
-		 System.out.println(pub.toString());
-		 
 		 RSAPrivateKeySpec priv = fact.getKeySpec(kp.getPrivate(),
 		        RSAPrivateKeySpec.class);
-		 saveToFile("privateKey", 
+		 saveToFile("KeyStore\\privateKey"+user, 
 		         priv.getModulus(), priv.getPrivateExponent());
 	}
 	
@@ -43,8 +43,8 @@ public class KeyStore {
 			oout.close();
 		}
 	}
-	public static PublicKey readPublicKey() throws Exception {
-	    InputStream in = new FileInputStream("publicKey");
+	public static PublicKey readPublicKey(String user) throws Exception {
+	    InputStream in = new FileInputStream("KeyStore\\publicKey"+user);
 	    ObjectInputStream oin =
 	            new ObjectInputStream(new BufferedInputStream(in));
 	    try {
@@ -63,8 +63,8 @@ public class KeyStore {
 	    }
 	}
 	
-	public static PrivateKey readPrivateKey() throws Exception{
-		InputStream in = new FileInputStream("privateKey");
+	public static PrivateKey readPrivateKey(String user) throws Exception{
+		InputStream in = new FileInputStream("KeyStore\\privateKey"+user);
 	    ObjectInputStream oin =
 	            new ObjectInputStream(new BufferedInputStream(in));
 	    try {

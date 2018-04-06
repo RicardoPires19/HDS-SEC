@@ -45,8 +45,8 @@ public class SymetricKeyGenerator {
 		}
 	}
 	
-	public Cipher getSecretKey(){
-		return cipher;
+	public SecretKey getSecretKey(){
+		return secretKey;
 	}
 	
 	public byte[] Encrypt(byte[] msg){

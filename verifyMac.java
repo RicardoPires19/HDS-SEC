@@ -1,38 +1,32 @@
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+
 import javax.crypto.Mac;
-import javax.crypto.SecretKey;
 
 public class verifyMac {
 
-	
-	private static final boolean True = false;
-	private static final boolean False = false;
 
-	
-	//String hmac is the hmac that is sent from a client
-	public boolean verifyhmac(String nonce, SecretKey sk, String hmac) throws Exception {
-		//get the nonce and the hmac of the nonce, use the shared key to verify that the hmac received is the same as the one you calculate
-		
+	public byte[] createHmac(String input, Key sessionKey) throws Exception {
+
 		Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-		sha256_HMAC.init(sk);
-		byte[] result = sha256_HMAC.doFinal(nonce.getBytes());
-		//String calc_hmac = new String(result);
-		
-		
-		byte[] hmac_rec = hmac.getBytes();
-		
-		//initMac rec_hmac = new initMac();
-		
-		//String receive = rec_hmac.getMac(nonce, sk);
-		
-		if(result == hmac_rec) {
-			return True;
-			
-		}
-		else return False;
-    
-   
-		
-		
+		sha256_HMAC.init(sessionKey);	
+		byte[] result = sha256_HMAC.doFinal(input.getBytes());
+
+		System.out.println(new String(result));
+		return result;
+
 	}
-	
+	public boolean verifyHMAC(byte[] encryptedMessage, Key sessionKey, String msg) throws InvalidKeyException, NoSuchAlgorithmException {
+
+		Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+		sha256_HMAC.init(sessionKey);
+		byte[] result = sha256_HMAC.doFinal(msg.getBytes());
+
+		if(result == encryptedMessage) {
+			return true;
+
+		}
+		else return false;	
+	}
 }
