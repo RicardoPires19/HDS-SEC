@@ -1,4 +1,4 @@
-package AsymetricEncription;
+package common;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,6 +16,14 @@ public class AsymmetricKeyGenerator {
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
 	private String keyName;
+
+	public String getKeyName() {
+		return keyName;
+	}
+
+	public void setKeyName(String keyName) {
+		this.keyName = keyName;
+	}
 
 	public AsymmetricKeyGenerator(int keylength, String keyName) throws NoSuchAlgorithmException, NoSuchProviderException {
 		this.keyGen = KeyPairGenerator.getInstance("RSA");
@@ -45,6 +53,14 @@ public class AsymmetricKeyGenerator {
 		fos.write(key);
 		fos.flush();
 		fos.close();
+	}
+	
+	public void WritePublicKey(String path) {
+		try {
+			writeToFile(path, publicKey.getEncoded());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void WriteKeys() {

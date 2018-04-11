@@ -1,4 +1,4 @@
-package AsymetricEncription;
+package common;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +15,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 
 public class AsymmetricCryptography {
 	private String path;
@@ -50,20 +51,40 @@ public class AsymmetricCryptography {
 		    return md.digest();
 	}
 	
-	public byte[] Encrypt(Key key, String obj){
+	public byte[] wrapKey(Key asyKey, SecretKey symKey) throws InvalidKeyException, IllegalBlockSizeException {
+	    try {
+	        final Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+	        cipher.init(Cipher.WRAP_MODE, asyKey);
+	        return cipher.wrap(symKey);
+	    } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+	        throw new IllegalStateException("Java runtime does not support RSA/ECB/OAEPWithSHA1AndMGF1Padding", e);
+	    }
+	}
+	
+	public Key unwrapKey(Key asyKey, byte[] key, String algorithm) throws InvalidKeyException {
+		try {
+	        final Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+	        cipher.init(Cipher.UNWRAP_MODE, asyKey);
+	        return cipher.unwrap(key, algorithm, Cipher.SECRET_KEY);
+	    } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+	        throw new IllegalStateException("Java runtime does not support RSA/ECB/OAEPWithSHA1AndMGF1Padding", e);
+	    }
+	}
+	
+	public byte[] Encrypt(Key key, byte[] object){
 		try {
 			this.cipher.init(Cipher.ENCRYPT_MODE, key);
-			encHash = cipher.doFinal(obj.getBytes());
+			encHash = cipher.doFinal(object);
 		} catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
 			e.printStackTrace();
 		}
 		return  encHash;
 	}
 	
-	public String Decrypt(Key key, byte[] obj){
+	public byte[] Decrypt(Key key, byte[] obj){
 		try {
 			this.cipher.init(Cipher.DECRYPT_MODE, key);
-			return new String(cipher.doFinal(obj));
+			return cipher.doFinal(obj);
 		} catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
 			e.printStackTrace();
 			return null;

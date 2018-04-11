@@ -1,4 +1,4 @@
-package AsymetricEncription;
+package common;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -10,9 +10,9 @@ public class KeyStorage {
 	public KeyStorage(){	 
 	}
 	
-	public static void createKeyPair(String user) throws Exception{
+	public static void createKeyPair(String user, int size) throws Exception{
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-		 kpg.initialize(512);
+		 kpg.initialize(size);
 
 		 KeyPair kp = kpg.genKeyPair();
 
@@ -50,11 +50,9 @@ public class KeyStorage {
 	    try {
 	        BigInteger m = (BigInteger) oin.readObject();
 	        BigInteger e = (BigInteger) oin.readObject();
-	        RSAPrivateKeySpec pkeySpec = new RSAPrivateKeySpec(m,e);
 	        RSAPublicKeySpec keySpec = new RSAPublicKeySpec(m, e);
 	        KeyFactory fact = KeyFactory.getInstance("RSA");
 	        PublicKey pubKey = fact.generatePublic(keySpec);
-	        PrivateKey privKey = fact.generatePrivate(pkeySpec);
 	        return pubKey;
 	    } catch (Exception e) {
 	        throw new Exception(e);
