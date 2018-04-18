@@ -40,7 +40,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	private final AsymmetricCryptography ac;
 	private final AsymmetricKeyGenerator akg;
 	private final SymetricKeyGenerator sc;
-	private final MysqlCon db;
+	private final MySqlCon db;
 	private final KeyStore ks;
 	private static final char[] PASSWORD = {'a', 'b'};
 	private Map<String, Calendar> Sessions;
@@ -56,7 +56,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		akg.createKeyPair();
 		akg.WritePublicKey("PKI/" + akg.getKeyName());   // PKI directory is the fictitious Public Key Infrastructure
 		sc = new SymetricKeyGenerator();
-		db = new MysqlCon();
+		db = new MySqlCon();
 		ks = KeyStore.getInstance("JCEKS");
 		java.io.FileInputStream fis = null;
 		ks.load(fis, PASSWORD);
@@ -313,7 +313,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	}	
 
 	@Override
-	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public String audit(PublicKey pubKey,String audited, String nonce) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}

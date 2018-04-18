@@ -316,7 +316,7 @@ public class ClientLibrary {
 			String nonce = RMIDemo.createNonce(pubKey);
 			String serverReply;
 			try {
-				serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce,priKey));
+				serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce);
 
 				JOptionPane.showConfirmDialog(null, serverReply,
 						"Auditing " + choice,

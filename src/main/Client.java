@@ -16,7 +16,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.security.sasl.AuthenticationException;
 
 public interface Client extends Remote {
-	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
+	public String audit(PublicKey pubKey,String audited, String nonce) throws RemoteException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 	public byte[] register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException, IllegalBlockSizeException;
 	public byte[] login(PublicKey pubKey,String nounce,byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, IllegalBlockSizeException;	
 	public void logout(PublicKey pubKey,String nonce, byte[] signature) throws RemoteException, AuthenticationException, InvalidKeyException, NoSuchAlgorithmException, SignatureException;

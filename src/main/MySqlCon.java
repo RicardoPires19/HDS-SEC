@@ -1,19 +1,24 @@
 package main;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;  
 
-class MysqlCon{  
+class MySqlCon{  
 	private Connection con = null;
 	private PreparedStatement st;
 	private ResultSet rs;
 
 
-	public MysqlCon() {
+	public MySqlCon() {
 		try{  
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
-			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?"
-                            + "user=root&password=root");
+			con=DriverManager.getConnection("jdbc:mysql://localhost/AccountData?user=root&password=root&useSSL=false");
+			
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) NOT NULL, Balance INT NOT NULL)").executeUpdate();
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
 			con.prepareStatement(
@@ -121,7 +126,7 @@ class MysqlCon{
 	public void createPendingTransaction(String sendingPK, String receivingPK, int amount, String signature) {
 		try {
 			//inserts a pending query that is for both of the parties (can be found by where x=123 or y=123)
-			final String sql = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signature) values (?, ?, ?, ?, ?)";
+			final String sql = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signatures) values (?, ?, ?, ?, ?)";
 			st=con.prepareStatement(sql);  
 			st.setString(1, sendingPK);
 			st.setString(2, receivingPK);
@@ -159,7 +164,7 @@ class MysqlCon{
 	public void CreatePendingLedgerAndUpdateBalance(String PK_source, String PK_destination, int amount, int current_balance, String signature) {
 
 		String sql = "update Accounts set Balance=? where PublicKey=?";
-		final String sql_l = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signature) values (?, ?, ?, ?, ?)";
+		final String sql_l = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signatures) values (?, ?, ?, ?, ?)";
 		//merge two methods in order to ensure that either both or none of them happen. 
 		try {
 			con.setAutoCommit(false);
@@ -234,8 +239,9 @@ class MysqlCon{
 				System.out.println("fdd");
 				String publicKey_sender = rs.getString("publicKey_sender");
 				String publicKey_receiver = rs.getString("publicKey_receiver");
+				String signature = rs.getString("Signatures");
 				int amount = rs.getInt("Amount");
-				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount;
+				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount + ", Signature: " + signature;
 				transfers.add(transfer);
 
 			}
