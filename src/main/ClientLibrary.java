@@ -225,7 +225,11 @@ public class ClientLibrary {
 			try {
 				String concatenation = pubKey+choice+Integer.parseInt(res.toString())+nonce;
 				
-				serverReply = RMIDemo.sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, mV.createHmac(concatenation, secretKey));
+				Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+				sig.initVerify(pubKey);
+				sig.update( (pubKey+choice+res.toString()).getBytes() );
+				
+				serverReply = RMIDemo.sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, createSignature(choice+res.toString(), priKey), mV.createHmac(concatenation, secretKey));
 				
 				if(!mV.verifyHMAC(serverReply[1], secretKey, new String(serverReply[0], "UTF-8"))) {
 					goodbyeMenu();
@@ -310,17 +314,11 @@ public class ClientLibrary {
 
 		if(choice != null){
 			String nonce = RMIDemo.createNonce(pubKey);
-			byte[][] serverReply;
+			String serverReply;
 			try {
 				serverReply = RMIDemo.audit(pubKey,choice.toString(),nonce,createSignature(nonce,priKey));
 
-				if(!mV.verifyHMAC(serverReply[1], secretKey, new String(serverReply[0], "UTF-8"))) {
-					goodbyeMenu();
-					return;
-				}
-				
-				
-				JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"),
+				JOptionPane.showConfirmDialog(null, serverReply,
 						"Auditing " + choice,
 						JOptionPane.PLAIN_MESSAGE,
 						JOptionPane.INFORMATION_MESSAGE);

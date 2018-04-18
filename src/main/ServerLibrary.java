@@ -220,11 +220,11 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		int balance = db.getBalance(pubKey.toString()); //returns int
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
 		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
-		
+
 		byte[][] reply = new byte[2][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
-		
+
 		if(result.isEmpty()){
 			return reply;
 		}
@@ -240,10 +240,9 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	@Override
-	public byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] signature, byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, src.toString())){
 			throw new AuthenticationException("This message has already been received");
-
 		}
 		else{
 			db.addNonce(src.toString(), nonce);
@@ -254,27 +253,32 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 
 		String concatenation = src+dst+amount+nonce;
 
-		try {
-			if(!macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), concatenation))
-				throw new AuthenticationException("Hmac is wrong");
-		} catch (Exception e) {
-//			e.printStackTrace();
-			throw new AuthenticationException("Could not authenticate");
-		}
+		if(!macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), concatenation))
+			throw new AuthenticationException("Hmac is wrong");
 
+
+		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+		sig.initVerify(src);
+		sig.update( (dst+amount).getBytes() );
+
+		if(!sig.verify(signature))
+			throw new AuthenticationException("Signature is incorrect");
+
+		
+		
 		int newBalance = db.getBalance(src.toString()) - amount;
 		if(newBalance < 0)
 			throw new AuthenticationException("WARNING: Insuficient balance!");
-		
-		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance);
+
+		db.CreatePendingLedgerAndUpdateBalance(src.toString(), dst, amount, newBalance, signature.toString());
 		//made a new one with both create ledger and update balance in order to ensure that they both happen or none of them happen
-		
+
 		String serverReply = "Sucess, transaction is now pending";
-		
+
 		byte[][] reply = new byte[2][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(src.toString(), PASSWORD));
-		
+
 		return reply;
 	}
 
@@ -298,38 +302,32 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		}
 
 		db.AcceptTransactionAndUpdateBalance(pubKey.toString(), id);
-		
+
 		String serverReply = "Check your new balance";
-		
+
 		byte[][] reply = new byte[2][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
-		
+
 		return reply;
 	}	
 
 	@Override
-	public byte[][] audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
 		else{
 			db.addNonce(pubKey.toString(), nonce);
 		}	
-		if(!verifySession(pubKey))
-			throw new AuthenticationException("Not in Session");
+		
 		List<String> output = db.getAllTransfers(audited);
 		String serverReply = "";
 		for(String str: output){
 			serverReply = serverReply + str + "\n";
 		}
-		
-		byte[][] reply = new byte[2][];
-		reply[0] = serverReply.getBytes("UTF-8");
-		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
-		
-		return reply;
-		
+
+		return serverReply;
 	}
 
 	@Override

@@ -16,7 +16,14 @@ class MysqlCon{
                             + "user=root&password=root");
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Accounts(PublicKey VARCHAR(500) NOT NULL, Balance INT NOT NULL)").executeUpdate();
 			con.prepareStatement("CREATE TABLE IF NOT EXISTS Nonces(Nonce VARCHAR(500) NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL)").executeUpdate();
-			con.prepareStatement("CREATE TABLE IF NOT EXISTS Ledgers(ID INT AUTO_INCREMENT primary key NOT NULL, PublicKey_sender VARCHAR(500) NOT NULL, PublicKey_receiver VARCHAR(500) NOT NULL, Amount INT NOT NULL, Status VARCHAR(30) NOT NULL)").executeUpdate();
+			con.prepareStatement(
+					"CREATE TABLE IF NOT EXISTS Ledgers("
+					+ "ID INT AUTO_INCREMENT primary key NOT NULL, "
+					+ "PublicKey_sender VARCHAR(500) NOT NULL, "
+					+ "PublicKey_receiver VARCHAR(500) NOT NULL, "
+					+ "Amount INT NOT NULL, "
+					+ "Status VARCHAR(30) NOT NULL, "
+					+ "Signatures VARCHAR(500) NOT NULL)").executeUpdate();
 		}catch(Exception e){ System.out.println(e);}  
 
 	}  
@@ -64,7 +71,7 @@ class MysqlCon{
 		return returning;
 	}
 
-	public void addNonce(String PublicKey, String Nonce) { //kjører bare dersom den ikke finnes der fra før av
+	public void addNonce(String PublicKey, String Nonce) {
 
 		final String sql = "insert into Nonces(Nonce, PublicKey_sender) values (?, ?)";
 
@@ -111,15 +118,16 @@ class MysqlCon{
 
 	}
 
-	public void createPendingTransaction(String sendingPK, String receivingPK, int amount) {
+	public void createPendingTransaction(String sendingPK, String receivingPK, int amount, String signature) {
 		try {
 			//inserts a pending query that is for both of the parties (can be found by where x=123 or y=123)
-			final String sql = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status) values (?, ?, ?,?)";
+			final String sql = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signature) values (?, ?, ?, ?, ?)";
 			st=con.prepareStatement(sql);  
 			st.setString(1, sendingPK);
 			st.setString(2, receivingPK);
 			st.setInt(3, amount);
 			st.setString(4, "pending");
+			st.setString(5, signature);
 			st.executeUpdate();
 			//how to ensure that an attacker does not execute this many times?? 
 
@@ -148,10 +156,10 @@ class MysqlCon{
 	}
 
 
-	public void CreatePendingLedgerAndUpdateBalance(String PK_source, String PK_destination, int amount, int current_balance) {
+	public void CreatePendingLedgerAndUpdateBalance(String PK_source, String PK_destination, int amount, int current_balance, String signature) {
 
 		String sql = "update Accounts set Balance=? where PublicKey=?";
-		final String sql_l = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status) values (?, ?, ?,?)";
+		final String sql_l = "INSERT into Ledgers(PublicKey_sender, PublicKey_receiver, Amount, status, Signature) values (?, ?, ?, ?, ?)";
 		//merge two methods in order to ensure that either both or none of them happen. 
 		try {
 			con.setAutoCommit(false);
@@ -165,6 +173,7 @@ class MysqlCon{
 			st.setString(2, PK_destination);
 			st.setInt(3, amount);
 			st.setString(4, "pending");
+			st.setString(5, signature);
 			st.executeUpdate();
 			con.commit();
 		} catch (SQLException e) {

@@ -1,6 +1,5 @@
 package main;
 
-import java.io.UnsupportedEncodingException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
@@ -17,15 +16,16 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.security.sasl.AuthenticationException;
 
 public interface Client extends Remote {
-	public byte[][] audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
+	public String audit(PublicKey pubKey,String audited, String nonce, byte[] signature) throws RemoteException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 	public byte[] register(PublicKey pubKey, String nonce, byte[] signature) throws RemoteException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException, AuthenticationException, IllegalBlockSizeException;
 	public byte[] login(PublicKey pubKey,String nounce,byte[] signature) throws RemoteException, AuthenticationException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, IllegalBlockSizeException;	
 	public void logout(PublicKey pubKey,String nonce, byte[] signature) throws RemoteException, AuthenticationException, InvalidKeyException, NoSuchAlgorithmException, SignatureException;
-	public byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] bs) throws RemoteException, AuthenticationException, UnsupportedEncodingException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 	public byte[][] receiveAmount(PublicKey pubKey, int id, String nonce, byte[] bs) throws RemoteException, AuthenticationException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 	public byte[][] checkAccount(PublicKey pubKey, String nonce, byte[] bs) throws RemoteException, AuthenticationException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
+	byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] bs, byte[] hmac)
+			throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception;
 }
