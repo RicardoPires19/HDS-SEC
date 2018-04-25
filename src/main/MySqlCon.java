@@ -6,7 +6,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;  
+import java.util.List;
+
 
 class MySqlCon{  
 	private Connection con = null;
@@ -18,11 +19,13 @@ class MySqlCon{
 		try{  
 			Class.forName("com.mysql.jdbc.Driver").newInstance();
 
-			con = DriverManager.getConnection("jdbc:mysql://localhost/", "root", "root");
+			con = DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=root&useSSL=false");
 
-			String sql = "CREATE DATABASE "+ dbName;
-			st.executeUpdate(sql);
+			String sql = "create database " + dbName + ";"; // No risk of SQL injection since the name is created in the Server.
+			java.sql.Statement s = con.createStatement();
+			s.executeUpdate(sql);
 			System.out.println("Database created successfully...");
+
 
 			con=DriverManager.getConnection("jdbc:mysql://localhost/" + dbName + "?user=root&password=root&useSSL=false");
 
@@ -37,8 +40,8 @@ class MySqlCon{
 							+ "Status VARCHAR(30) NOT NULL, "
 							+ "Signatures VARCHAR(500) NOT NULL)").executeUpdate();
 		}
-		catch(Exception e){ 
-			System.out.println(e);
+		catch(Exception e){
+			e.printStackTrace();
 		}  
 	}  
 
