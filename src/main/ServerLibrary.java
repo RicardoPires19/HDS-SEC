@@ -49,21 +49,20 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	private final verifyMac macVerifier = new verifyMac();
 	private final SecureRandom random;
 
-	public ServerLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
+	public ServerLibrary(String dbName) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
-		akg = new AsymmetricKeyGenerator(512, "ServerKey");
+		akg = new AsymmetricKeyGenerator(512, dbName);
 		ac = new AsymmetricCryptography();
 		akg.createKeyPair();
 		akg.WritePublicKey("PKI/" + akg.getKeyName());   // PKI directory is the fictitious Public Key Infrastructure
 		sc = new SymetricKeyGenerator();
-		db = new MySqlCon();
 		ks = KeyStore.getInstance("JCEKS");
+		db = new MySqlCon(dbName);
 		java.io.FileInputStream fis = null;
 		ks.load(fis, PASSWORD);
 		Sessions = new HashMap<String, Calendar>(20);
 		random = new SecureRandom();
 		random.setSeed("RANDOMseeds".getBytes());
-
 	}
 
 	private boolean verifySession(PublicKey pubKey) {
