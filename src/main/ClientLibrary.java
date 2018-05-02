@@ -17,7 +17,10 @@ import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -30,25 +33,36 @@ import common.AsymmetricCryptography;
 import common.verifyMac;
 
 public class ClientLibrary {
-	private static AsymmetricCryptography ac;
+	private AsymmetricCryptography ac;
 	private static PublicKey pubKey;
 	private static PrivateKey priKey;
-	private static SecretKey secretKey;
-	private static ArrayList<Client> RMIDemo = new ArrayList<Client>(10);
-	private static final verifyMac mV = new verifyMac();
+	private HashMap<Client, SecretKey> Servers = new HashMap<Client, SecretKey>(30);
+	private final verifyMac mV = new verifyMac();
+	private int rid = 0, seq = 0, wts = 0, acks = 0;
+	private boolean reading = false;
+	private ArrayList<byte[]> readlist = new ArrayList<byte[]>(50);
+	private byte[] readval = null;
 
+
+	private ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException {
+		ac = new AsymmetricCryptography();
+	}
+
+	protected HashMap<Client, SecretKey> getRMIDemo() {
+		return Servers;
+	}
 
 	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException, InvalidKeyException, SignatureException, InvalidKeySpecException, NumberFormatException, SQLException{
-		ac = new AsymmetricCryptography();
+		ClientLibrary cl = new ClientLibrary();
 		int n = Integer.parseInt(args[1]);
 		if (args.length == 2) {
 			for (int i = 0; i < n; i++) {
 				String url = new String("rmi://localhost/Server" + i);
-				ClientLibrary.RMIDemo.add( (Client)Naming.lookup(url) );
+				cl.getRMIDemo().put( (Client)Naming.lookup(url), null );
 			}
-			
+
 			try {
-				startMenu();
+				cl.startMenu();
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -58,7 +72,7 @@ public class ClientLibrary {
 		}
 	}
 
-	public static void startMenu() throws Exception{
+	public void startMenu() throws Exception{
 		Object[] options = {"Login",
 				"Register","NVM, BYE!"};
 
@@ -78,8 +92,8 @@ public class ClientLibrary {
 			registerMenu();
 		}
 	}
-	
-	public static void mainMenu(String serverReply) throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+
+	public void mainMenu(String serverReply) throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 
 		Object[] options = {"Check Account", "Send Amount","Receive Amount", "Audit", "Logout"};
 		int res = JOptionPane.showOptionDialog(null, serverReply,
@@ -103,8 +117,10 @@ public class ClientLibrary {
 		return;
 
 		case 4: try {
-			String nonce = RMIDemo.get(0).createNonce(pubKey);
-			RMIDemo.get(0).logout(pubKey, nonce, createSignature(nonce,priKey));
+			for (Client c : Servers.keySet()) {
+				String nonce = c.createNonce(pubKey);
+				c.logout(pubKey, nonce, createSignature(nonce,priKey));
+			}
 			startMenu();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -117,23 +133,28 @@ public class ClientLibrary {
 		}
 	}
 
-	public static void loginMenu() throws Exception{
+	public void loginMenu() throws Exception{
 		byte[] serverReply;
 		String res = JOptionPane.showInputDialog(null, "Input Username:", "Register", 
 				JOptionPane.OK_CANCEL_OPTION,null, null, JOptionPane.PLAIN_MESSAGE).toString();
 
 		if(res!=null){
 			createOrReadKeys(res);
-			String nonce = RMIDemo.get(0).createNonce(pubKey);
 			try {
-				serverReply = RMIDemo.get(0).login(pubKey,nonce, createSignature(nonce,priKey));	
-				if(serverReply == null){
+				int i = 0;
+				for (Client c : Servers.keySet()) {
+					String nonce = c.createNonce(pubKey);
+					serverReply = c.login(pubKey, nonce, createSignature(nonce,priKey));	
+					if(serverReply != null){
+						Servers.put(c, (SecretKey) ac.unwrapKey(priKey, serverReply, "AES") );  // Type Cast is acceptable since a key of type SecretKey is expected
+						i++;
+					}
+				}
+				if(i == 0){
 					loginMenu();
 					return;
 				}
-				secretKey = (SecretKey) ac.unwrapKey(priKey, serverReply, "AES");  // Type Cast is acceptable since a key of type SecretKey is expected
 				mainMenu("Login Sucessful");
-
 			} catch (AuthenticationException e) {
 				System.out.println("Authentication Failure");
 			}
@@ -144,7 +165,7 @@ public class ClientLibrary {
 
 	}
 
-	public static void registerMenu() throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, NumberFormatException, UnsupportedEncodingException, SQLException, IllegalBlockSizeException{
+	public void registerMenu() throws RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, NumberFormatException, UnsupportedEncodingException, SQLException, IllegalBlockSizeException{
 
 		byte[] serverReply;
 
@@ -154,18 +175,22 @@ public class ClientLibrary {
 
 		if(res!=null){
 			createOrReadKeys(res);
-			String nonce = RMIDemo.get(0).createNonce(pubKey);
 			try {
-				serverReply = RMIDemo.get(0).register(pubKey,nonce, createSignature(nonce,priKey));
-				nonce = RMIDemo.get(1).createNonce(pubKey);
-				serverReply = RMIDemo.get(1).register(pubKey,nonce, createSignature(nonce,priKey));
-				if(serverReply == null){
+				int i = 0;
+				for (Client c : Servers.keySet()) {
+					String nonce = c.createNonce(pubKey);
+					serverReply = c.register(pubKey, nonce, createSignature(nonce,priKey));	
+					if(serverReply != null){
+						Servers.put(c, (SecretKey) ac.unwrapKey(priKey, serverReply, "AES") );  // Type Cast is acceptable since a key of type SecretKey is expected
+						i++;
+					}
+				}
+				if(i == 0){
 					registerMenu();
-					System.out.println("serverReply: " + serverReply);
-
+					System.out.println("Registration faleid on all servers.");
 					return;
 				}
-				secretKey = (SecretKey) ac.unwrapKey(priKey, serverReply, "AES");  // Type Cast is acceptable since a key of type SecretKey is expected
+
 				mainMenu("Registration Sucessful");
 			} catch (AuthenticationException e) {
 				System.out.println("Authentication Failure");
@@ -176,24 +201,34 @@ public class ClientLibrary {
 		}
 	}
 
-	
 
-	public static void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-		String nonce = RMIDemo.get(0).createNonce(pubKey);
-		byte[][] serverReply;
 
+	public void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+		byte[][] serverReply, replies = new byte[Servers.size() + 1][];
+		this.reading = true;
 		try {
-			String concatenation = pubKey + nonce;
-			serverReply = RMIDemo.get(0).checkAccount(pubKey, nonce, mV.createHmac(concatenation, secretKey));
-			
-			
-			if(!mV.verifyHMAC(serverReply[1], secretKey, new String(serverReply[0], "UTF-8"))) {
-				goodbyeMenu();
-				return;
+			int i = 0;
+			for (Client c: Servers.keySet()) {
+				String nonce = c.createNonce(pubKey);
+				String concatenation = pubKey + nonce;
+				serverReply = c.checkAccount(pubKey, nonce, mV.createHmac(concatenation, Servers.get(c)), rid, seq);
+
+				int srid = Integer.parseInt(new String(serverReply[2]));
+				int sseq = Integer.parseInt(new String(serverReply[3]));
+
+				if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
+						&& srid == rid && sseq == (seq+1) ) {
+					replies[i] = serverReply[0];
+				}
+				i++;
 			}
-			int res = JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"), "Account Info", 
+			byte[] decision = quorum(replies);
+
+			int res = JOptionPane.showConfirmDialog(null, new String(decision, "UTF-8"), "Account Info", 
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
+			
+			this.reading = false;
 			if(res == JOptionPane.OK_OPTION){
 				mainMenu("Not doing so well uh? What you wanna do now?");
 				return;
@@ -208,9 +243,10 @@ public class ClientLibrary {
 
 	}
 
-	public static void sendAmountMenu() throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-
-		List<String> dest_choices = RMIDemo.get(0).getPublicKeys(pubKey);
+	public void sendAmountMenu() throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+		byte[][] serverReply = null, replies = new byte[Servers.size() + 1][];
+		Optional<Client> any = Servers.keySet().stream().findAny();
+		List<String> dest_choices = any.get().getPublicKeys(pubKey);
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("To whom:");
@@ -222,27 +258,42 @@ public class ClientLibrary {
 
 		JLabel label_amount = new JLabel("How much:");
 
-
 		Object res = JOptionPane.showInputDialog(null,label_amount,JOptionPane.QUESTION_MESSAGE);
 
 		if(res != null){
-			String nonce = RMIDemo.get(0).createNonce(pubKey);
 
-			byte[][] serverReply;
 			try {
-				String concatenation = pubKey+choice+Integer.parseInt(res.toString())+nonce;
-				
-				Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
-				sig.initVerify(pubKey);
-				sig.update( (pubKey+choice+res.toString()).getBytes() );
-				
-				serverReply = RMIDemo.get(0).sendAmount(pubKey, choice, Integer.parseInt(res.toString()), nonce, createSignature(choice+res.toString(), priKey), mV.createHmac(concatenation, secretKey));
-				
-				if(!mV.verifyHMAC(serverReply[1], secretKey, new String(serverReply[0], "UTF-8"))) {
-					goodbyeMenu();
-					return;
+				int i = 0;
+				for(Client c : Servers.keySet()) {
+					String nonce = c.createNonce(pubKey);
+					String concatenation = pubKey+choice+Integer.parseInt(res.toString())+nonce;
+
+					Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
+					sig.initVerify(pubKey);
+					sig.update( (pubKey+choice+res.toString()).getBytes() );
+
+					serverReply = c.sendAmount(pubKey, 
+							choice, 
+							Integer.parseInt(res.toString()), 
+							nonce, 
+							createSignature(choice+res.toString(), priKey), 
+							mV.createHmac(concatenation, Servers.get(c)),
+							wts, seq);
+
+					int swts = Integer.parseInt(new String(serverReply[2]));
+					int sseq = Integer.parseInt(new String(serverReply[3]));
+					if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
+							&& swts == (wts+1) && sseq == (seq+1) ) {
+						replies[i] = serverReply[0];
+						acks++;
+					}
+					i++;
 				}
 				
+				if(acks < (Servers.size() / 2) )
+					throw new AuthenticationException("Not enough writes: " + acks);
+				
+				this.acks = 0;
 				JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"), "Account Info", 
 						JOptionPane.CANCEL_OPTION,
 						JOptionPane.INFORMATION_MESSAGE); // Initial choice);
@@ -258,9 +309,10 @@ public class ClientLibrary {
 		}
 	}
 
-	public static void receiveAmountMenu() throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-
-		List<String> dest_choices = RMIDemo.get(0).getPendingList(pubKey);
+	public void receiveAmountMenu() throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+		byte[][] serverReply = null, replies = new byte[Servers.size() + 1][];
+		Optional<Client> any = Servers.keySet().stream().findAny();
+		List<String> dest_choices = any.get().getPublicKeys(pubKey);
 		Object[] obj = dest_choices.toArray();
 
 		if(obj.length == 0){
@@ -272,27 +324,35 @@ public class ClientLibrary {
 		}
 		else{
 			JLabel label_id = new JLabel("Pending List:");
-			
+
 			String choice = JOptionPane.showInputDialog(null, label_id,
 					"SendAmount", JOptionPane.QUESTION_MESSAGE, null, obj, obj[0]).toString();
 
 			System.out.println(choice);
 
 			if (choice !=null){
-				String nonce = RMIDemo.get(0).createNonce(pubKey);
 				int result_id = Integer.parseInt(choice.substring(3, choice.indexOf("Sender:")).trim());
-				byte[][] serverReply;
 				try {
-					//					serverReply = RMIDemo.get(0).receiveAmount(pubKey,result_id, nonce,createSignature(nonce));
-					String concatenation = nonce + pubKey + result_id;
-					serverReply = RMIDemo.get(0).receiveAmount(pubKey, result_id, nonce, mV.createHmac(concatenation, secretKey));
-					
-					if(!mV.verifyHMAC(serverReply[1], secretKey, new String(serverReply[0], "UTF-8"))) {
-						goodbyeMenu();
-						return;
+					int i = 0;
+					for(Client c : Servers.keySet()) {
+						String nonce = c.createNonce(pubKey);
+						String concatenation = nonce + pubKey + result_id;
+						serverReply = c.receiveAmount(pubKey, result_id, nonce, mV.createHmac(concatenation, Servers.get(c)), wts, seq);
+
+						int swts = Integer.parseInt(new String(serverReply[2]));
+						int sseq = Integer.parseInt(new String(serverReply[3]));
+						if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
+								&& swts == (wts+1) && sseq == (seq+1) ) {
+							replies[i] = serverReply[0];
+							acks++;
+						}
+						i++;
 					}
-					
-					
+
+					if(acks < (Servers.size() / 2) )
+						throw new AuthenticationException("Not enough writes: " + acks);
+
+					this.acks = 0;
 					JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"), "Account Info", 
 							JOptionPane.CANCEL_OPTION,
 							JOptionPane.INFORMATION_MESSAGE);
@@ -308,24 +368,40 @@ public class ClientLibrary {
 		return;
 	}
 
-	public static void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+	public void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
+		String[] serverReply;
+		byte[][] replies = new byte[Servers.size() + 1][];
+		Optional<Client> any = Servers.keySet().stream().findAny();
+		List<String> dest_choices = any.get().getPublicKeys(pubKey);
+		// Needs changing
 
-
-		List<String> dest_choices = RMIDemo.get(0).getPublicKeys(pubKey);
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("Audit whom:");
 
+		this.reading = true;
 		String choice = JOptionPane.showInputDialog(null, label_destination,
 				"SendAmount", JOptionPane.QUESTION_MESSAGE, null, obj, obj[0]).toString();
 
 		if(choice != null){
-			String nonce = RMIDemo.get(0).createNonce(pubKey);
-			String serverReply;
 			try {
-				serverReply = RMIDemo.get(0).audit(pubKey,choice.toString(),nonce);
+				int i = 0;
+				for (Client c: Servers.keySet()) {
+					String nonce = c.createNonce(pubKey);
+					serverReply = c.audit(pubKey, choice, nonce, rid, seq);
 
-				JOptionPane.showConfirmDialog(null, serverReply,
+					int srid = Integer.parseInt(serverReply[1]);
+					int sseq = Integer.parseInt(serverReply[2]);
+					if(srid == rid && sseq == (seq+1) ) {
+						replies[i] = serverReply[0].getBytes();
+						return;
+					}
+					i++;
+				}
+				byte[] decision = quorum(replies);
+				
+				this.reading = false;
+				JOptionPane.showConfirmDialog(null, new String(decision),
 						"Auditing " + choice,
 						JOptionPane.PLAIN_MESSAGE,
 						JOptionPane.INFORMATION_MESSAGE);
@@ -340,18 +416,12 @@ public class ClientLibrary {
 	}
 
 	public static void goodbyeMenu(){
-		JOptionPane.showConfirmDialog(null, "Thank you, " +pubKey.toString()+" please come again!",
+		JOptionPane.showConfirmDialog(null, "Thank you, " + pubKey.toString()+" please come again!",
 				"Goodbye",
 				JOptionPane.PLAIN_MESSAGE,
 				JOptionPane.QUESTION_MESSAGE);
 		return;
 	}
-
-	//	public String createNonce() {
-	//		SecureRandom nonce = new SecureRandom();
-	//		String Nonce = nonce.toString();
-	//		return Nonce;
-	//	}
 
 	public static void createOrReadKeys(String user){
 		try {
@@ -367,7 +437,23 @@ public class ClientLibrary {
 			}
 		}
 	}
-	
+
+	private byte[] quorum(byte[][] serverReply) {
+		HashMap<byte[], Integer> replies = new HashMap<byte[], Integer>(serverReply.length);
+
+		for (byte[] bs : serverReply) {
+			replies.merge(bs, 1, Integer::sum);
+		}
+
+		Map.Entry<byte[], Integer> max = null;
+		for (Map.Entry<byte[], Integer> entry : replies.entrySet()) {
+			if(max == null || entry.getValue() > max.getValue())
+				max = entry;
+		}
+
+		return max.getKey();
+	}
+
 	public static byte[] createSignature(String input,PrivateKey privKey) {  //input can be both a nonce or a HMAC
 		byte[] data;
 		try {

@@ -195,7 +195,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	@Override
-	public byte[][] checkAccount(PublicKey pubKey, String nonce,  byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public byte[][] checkAccount(PublicKey pubKey, String nonce,  byte[] hmac, int rid, int seq) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
@@ -220,9 +220,11 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
 		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
 
-		byte[][] reply = new byte[2][];
+		byte[][] reply = new byte[4][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
+		reply[2] = Integer.toString(rid).getBytes();
+		reply[3] = Integer.toString(seq++).getBytes();
 
 		if(result.isEmpty()){
 			return reply;
@@ -239,7 +241,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	}
 
 	@Override
-	public byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] signature, byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public byte[][] sendAmount(PublicKey src, String dst, int amount, String nonce, byte[] signature, byte[] hmac, int wts, int seq) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, src.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
@@ -264,7 +266,6 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 			throw new AuthenticationException("Signature is incorrect");
 
 		
-		
 		int newBalance = db.getBalance(src.toString()) - amount;
 		if(newBalance < 0)
 			throw new AuthenticationException("WARNING: Insuficient balance!");
@@ -277,12 +278,14 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		byte[][] reply = new byte[2][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(src.toString(), PASSWORD));
+		reply[2] = Integer.toString(wts++).getBytes();
+		reply[3] = Integer.toString(seq++).getBytes();
 
 		return reply;
 	}
 
 	@Override
-	public byte[][] receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public byte[][] receiveAmount(PublicKey pubKey, int id, String nonce, byte[] hmac, int wts, int seq) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
@@ -304,15 +307,17 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 
 		String serverReply = "Check your new balance";
 
-		byte[][] reply = new byte[2][];
+		byte[][] reply = new byte[4][];
 		reply[0] = serverReply.getBytes("UTF-8");
 		reply[1] = macVerifier.createHmac(serverReply, ks.getKey(pubKey.toString(), PASSWORD));
+		reply[2] = Integer.toString(wts++).getBytes();
+		reply[3] = Integer.toString(seq++).getBytes();
 
 		return reply;
 	}	
 
 	@Override
-	public String audit(PublicKey pubKey,String audited, String nonce) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
+	public String[] audit(PublicKey pubKey,String audited, String nonce, int rid, int seq) throws UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, Exception {
 		if(db.checkNonce(nonce, pubKey.toString())){
 			throw new AuthenticationException("This message has already been received");
 		}
@@ -321,11 +326,13 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		}	
 		
 		List<String> output = db.getAllTransfers(audited);
-		String serverReply = "";
+		String[] serverReply = new String[3];
 		for(String str: output){
-			serverReply = serverReply + str + "\n";
+			serverReply[0] = serverReply + str + "\n";
 		}
-
+		serverReply[1] = Integer.toString(rid);
+		serverReply[2] = Integer.toString(seq++);
+		
 		return serverReply;
 	}
 
