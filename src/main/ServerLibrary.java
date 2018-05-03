@@ -335,6 +335,11 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		
 		return serverReply;
 	}
+	
+	@Override
+	public void writeBack(byte[][] reply) throws RemoteException {
+		// TODO Auto-generated method stub
+	}
 
 	@Override
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException{

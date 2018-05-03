@@ -40,7 +40,6 @@ public class ClientLibrary {
 	private final verifyMac mV = new verifyMac();
 	private int rid = 0, seq = 0, wts = 0, acks = 0;
 	private boolean reading = false;
-	private ArrayList<byte[]> readlist = new ArrayList<byte[]>(50);
 	private byte[] readval = null;
 
 
@@ -217,7 +216,7 @@ public class ClientLibrary {
 				int sseq = Integer.parseInt(new String(serverReply[3]));
 
 				if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
-						&& srid == rid && sseq == (seq+1) ) {
+						&& srid == rid && sseq > seq ) {
 					replies[i] = serverReply[0];
 				}
 				i++;
@@ -283,7 +282,7 @@ public class ClientLibrary {
 					int swts = Integer.parseInt(new String(serverReply[2]));
 					int sseq = Integer.parseInt(new String(serverReply[3]));
 					if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
-							&& swts == (wts+1) && sseq == (seq+1) ) {
+							&& swts > wts && sseq > seq ) {
 						replies[i] = serverReply[0];
 						acks++;
 					}
@@ -342,7 +341,7 @@ public class ClientLibrary {
 						int swts = Integer.parseInt(new String(serverReply[2]));
 						int sseq = Integer.parseInt(new String(serverReply[3]));
 						if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
-								&& swts == (wts+1) && sseq == (seq+1) ) {
+								&& swts > wts && sseq > seq ) {
 							replies[i] = serverReply[0];
 							acks++;
 						}
@@ -370,11 +369,11 @@ public class ClientLibrary {
 
 	public void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 		String[] serverReply;
-		byte[][] replies = new byte[Servers.size() + 1][];
+		byte[] reply = null;
 		Optional<Client> any = Servers.keySet().stream().findAny();
 		List<String> dest_choices = any.get().getPublicKeys(pubKey);
-		// Needs changing
-
+		int highestSeq = seq;
+		
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("Audit whom:");
@@ -392,13 +391,13 @@ public class ClientLibrary {
 
 					int srid = Integer.parseInt(serverReply[1]);
 					int sseq = Integer.parseInt(serverReply[2]);
-					if(srid == rid && sseq == (seq+1) ) {
-						replies[i] = serverReply[0].getBytes();
-						return;
+					if(srid >= rid && sseq > seq && sseq > highestSeq) {
+						highestSeq = sseq;
+						reply = serverReply[0].getBytes();
 					}
 					i++;
 				}
-				byte[] decision = quorum(replies);
+				byte[] decision = reply;
 				
 				this.reading = false;
 				JOptionPane.showConfirmDialog(null, new String(decision),
@@ -435,6 +434,12 @@ public class ClientLibrary {
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
+		}
+	}
+	
+	private void broadcastReply(byte[][] reply, Client[] ServerArray) throws RemoteException {
+		for (int i = 0; i < ServerArray.length; i++) {
+			ServerArray[i].writeBack(reply);
 		}
 	}
 

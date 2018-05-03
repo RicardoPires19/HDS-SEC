@@ -28,4 +28,5 @@ public interface Client extends Remote {
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
+	void writeBack(byte[][] reply) throws RemoteException;
 }
