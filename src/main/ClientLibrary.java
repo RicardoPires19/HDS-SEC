@@ -16,7 +16,6 @@ import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +38,6 @@ public class ClientLibrary {
 	private HashMap<Client, SecretKey> Servers = new HashMap<Client, SecretKey>(30);
 	private final verifyMac mV = new verifyMac();
 	private int rid = 0, seq = 0, wts = 0, acks = 0;
-	private boolean reading = false;
-	private byte[] readval = null;
 
 
 	private ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException {
@@ -204,7 +201,6 @@ public class ClientLibrary {
 
 	public void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 		byte[][] serverReply, replies = new byte[Servers.size() + 1][];
-		this.reading = true;
 		try {
 			int i = 0;
 			for (Client c: Servers.keySet()) {
@@ -227,7 +223,6 @@ public class ClientLibrary {
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
 			
-			this.reading = false;
 			if(res == JOptionPane.OK_OPTION){
 				mainMenu("Not doing so well uh? What you wanna do now?");
 				return;
@@ -378,13 +373,11 @@ public class ClientLibrary {
 
 		JLabel label_destination = new JLabel("Audit whom:");
 
-		this.reading = true;
 		String choice = JOptionPane.showInputDialog(null, label_destination,
 				"SendAmount", JOptionPane.QUESTION_MESSAGE, null, obj, obj[0]).toString();
 
 		if(choice != null){
 			try {
-				int i = 0;
 				for (Client c: Servers.keySet()) {
 					String nonce = c.createNonce(pubKey);
 					serverReply = c.audit(pubKey, choice, nonce, rid, seq);
@@ -395,11 +388,9 @@ public class ClientLibrary {
 						highestSeq = sseq;
 						reply = serverReply[0].getBytes();
 					}
-					i++;
 				}
 				byte[] decision = reply;
 				
-				this.reading = false;
 				JOptionPane.showConfirmDialog(null, new String(decision),
 						"Auditing " + choice,
 						JOptionPane.PLAIN_MESSAGE,
@@ -434,12 +425,6 @@ public class ClientLibrary {
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
-		}
-	}
-	
-	private void broadcastReply(byte[][] reply, Client[] ServerArray) throws RemoteException {
-		for (int i = 0; i < ServerArray.length; i++) {
-			ServerArray[i].writeBack(reply);
 		}
 	}
 
@@ -485,6 +470,11 @@ public class ClientLibrary {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		md.update(args.getBytes());
 		return md.digest();
+	}
+	
+	private int parseLedger(String Ledger) {
+		return 0;
+		// FIX ME
 	}
 
 }

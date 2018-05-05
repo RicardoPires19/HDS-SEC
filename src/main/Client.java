@@ -9,6 +9,7 @@ import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
+import java.security.spec.InvalidKeySpecException;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -28,5 +29,7 @@ public interface Client extends Remote {
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
-	void writeBack(byte[][] reply) throws RemoteException;
+	byte[] writeBackAudit(String[] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, NumberFormatException, SQLException, AuthenticationException;
+	byte[] writeBackCheckAccount(byte[][] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NumberFormatException, SignatureException, SQLException, AuthenticationException;
+	
 }

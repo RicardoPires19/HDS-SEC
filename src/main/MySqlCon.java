@@ -200,23 +200,8 @@ class MySqlCon{
 
 	}
 
-	public void updateBalance(String PK_source, int current_balance) {
-		try {
-			String sql = "update Accounts set Balance=? where PublicKey=?";
-			st=con.prepareStatement(sql);
-			st.setInt(1, current_balance);
-			st.setString(2, PK_source );
-			st.executeUpdate();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-
-	}
-
 	public List<String> getIncomingPendingTransfers(String publicKey) {
-		List<String> outputList = new ArrayList<>();
+		List<String> outputList = new ArrayList<String>(20);
 		final String sql_get_pending_tranfers= "select * from Ledgers where PublicKey_receiver=? and status='pending'";				
 		try {
 			st=con.prepareStatement(sql_get_pending_tranfers);
@@ -224,9 +209,8 @@ class MySqlCon{
 			rs=st.executeQuery();
 			while(rs.next())  {
 				String src = rs.getString("publicKey_sender");
-				//				String dst = rs.getString("publicKey_receiver");
 				int amount = rs.getInt("Amount");
-				String output = "SENDER: " + src + "\n AMOUNT: " + amount ;
+				String output = "SENDER: " + src + "\n AMOUNT: " + amount + ";\n";
 				outputList.add(output);
 
 			}
@@ -253,7 +237,8 @@ class MySqlCon{
 				String publicKey_receiver = rs.getString("publicKey_receiver");
 				String signature = rs.getString("Signatures");
 				int amount = rs.getInt("Amount");
-				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount + ", Signature: " + signature;
+				String status = rs.getString("Status");
+				String transfer = "Sender: " + publicKey_sender + ", Receiver: " + publicKey_receiver+ ", Amount: " + amount + ", Status: " + status + ", Signature: " + signature;
 				transfers.add(transfer);
 
 			}
@@ -284,6 +269,16 @@ class MySqlCon{
 			e.printStackTrace();
 		}  
 		return transfers;
+	}
+	
+	public void AcceptTransaction(String src, String dst, int amount) throws SQLException {
+		final String sql = "update Ledgers set status='accepted' "
+				+ "where publicKey_sender = ? and publicKey_receiver = ? and Amount = ?";
+		
+		st=con.prepareStatement(sql);
+		st.setString(1, src);
+		st.setString(2, dst);
+		st.setInt(3, amount);
 	}
 
 	public void AcceptTransactionAndUpdateBalance(String pubKey,int transactionID) {

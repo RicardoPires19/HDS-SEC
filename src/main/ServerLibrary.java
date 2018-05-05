@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStore.SecretKeyEntry;
 import java.security.KeyStoreException;
@@ -18,7 +19,10 @@ import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.sql.SQLException;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -48,6 +52,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	private final SecureRandom nonce = new SecureRandom();
 	private final verifyMac macVerifier = new verifyMac();
 	private final SecureRandom random;
+	private HashMap<String, Integer> timeStamps = new HashMap<String, Integer>(20);
 
 	public ServerLibrary(String dbName) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
 		super();
@@ -190,6 +195,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		Sessions.put(pubKey.toString(), date);
 		sc.renewKey(Integer.toString(random.nextInt()), 16, "AES");
 		storeKey(pubKey, sc.getSecretKey());
+		timeStamps.put(pubKey.toString(), 0);
 
 		return ac.wrapKey(pubKey, sc.getSecretKey());
 	}
@@ -265,7 +271,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		if(!sig.verify(signature))
 			throw new AuthenticationException("Signature is incorrect");
 
-		
+
 		int newBalance = db.getBalance(src.toString()) - amount;
 		if(newBalance < 0)
 			throw new AuthenticationException("WARNING: Insuficient balance!");
@@ -324,7 +330,7 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		else{
 			db.addNonce(pubKey.toString(), nonce);
 		}	
-		
+
 		List<String> output = db.getAllTransfers(audited);
 		String[] serverReply = new String[3];
 		for(String str: output){
@@ -332,13 +338,8 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		}
 		serverReply[1] = Integer.toString(rid);
 		serverReply[2] = Integer.toString(seq++);
-		
+
 		return serverReply;
-	}
-	
-	@Override
-	public void writeBack(byte[][] reply) throws RemoteException {
-		// TODO Auto-generated method stub
 	}
 
 	@Override
@@ -363,5 +364,85 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		return true;
 
 	}
+
+	@Override
+	public byte[] writeBackAudit(String[] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, NumberFormatException, SQLException, AuthenticationException {
+		byte[] serverReply = null;
+		
+		byte[] data = Base64.getDecoder().decode(serverPubKey.getBytes());
+		X509EncodedKeySpec spec = new X509EncodedKeySpec(data);
+		KeyFactory fact = KeyFactory.getInstance("RSA");
+		PublicKey pbk = fact.generatePublic(spec);
+		
+		if(!verifySignature(pbk, new String(reply[0]), reply[3].getBytes()))
+			throw new AuthenticationException("Fake write request.");
+		
+		try {
+			serverReply = macVerifier.createHmac("ack", ks.getKey(pubKey, PASSWORD));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if(Integer.parseInt(reply[1]) > timeStamps.get(pubKey) ) {
+			String[] line = reply[0].split("\n");
+
+			for (String l : line) { // Goes through all the lines in the ledger
+				String[] args = l.split("Sender: |, Receiver: |, Amount: |, Status: |, Signature: ");
+
+				data = Base64.getDecoder().decode((args[0].getBytes()));
+				spec = new X509EncodedKeySpec(data);
+				fact = KeyFactory.getInstance("RSA");
+				pbk = fact.generatePublic(spec);
+
+				if(verifySignature(pbk, args[1]+args[2]+args[3], args[args.length-1].getBytes())) { //if the signatures in the ledger are legit, then they are added.
+					if (args[3].equals("Pending")) {
+						db.createPendingTransaction(args[0], args[1], Integer.parseInt(args[2]), args[3]);
+					}
+					else {
+						db.AcceptTransaction(args[0], args[1], Integer.parseInt(args[2]));
+					}
+				}
+			}
+		}
+		return serverReply;
+	}
+
+	@Override
+	public byte[] writeBackCheckAccount(byte[][] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NumberFormatException, SignatureException, SQLException, AuthenticationException {
+		byte[] serverReply = null;
+		
+		byte[] data = Base64.getDecoder().decode(serverPubKey.getBytes());
+		X509EncodedKeySpec spec = new X509EncodedKeySpec(data);
+		KeyFactory fact = KeyFactory.getInstance("RSA");
+		PublicKey pbk = fact.generatePublic(spec);
+		
+		if(!verifySignature(pbk, new String(reply[0]), reply[3]))
+			throw new AuthenticationException("Fake write request.");
+		
+		try {
+			serverReply = macVerifier.createHmac("ack", ks.getKey(pubKey, PASSWORD));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		if(Integer.parseInt(new String(reply[1])) > timeStamps.get(pubKey) ) {
+			String[] line = new String(reply[0]).split(";\n");
+
+			for (String l : line) { // Goes through all the lines in the ledger
+				String[] args = l.split("SENDER: |\n AMOUNT: ");
+
+				data = Base64.getDecoder().decode(pubKey.getBytes());
+				spec = new X509EncodedKeySpec(data);
+				fact = KeyFactory.getInstance("RSA");
+				pbk = fact.generatePublic(spec);
+
+				if(verifySignature(pbk, args[1]+args[2], reply[2])) {
+					db.createPendingTransaction(args[0], args[1], Integer.parseInt(args[2]), args[3]);
+				}
+			}
+		}
+		return serverReply;
+	}
+
 
 }
