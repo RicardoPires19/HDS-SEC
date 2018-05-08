@@ -37,7 +37,7 @@ public class ClientLibrary {
 	private static PrivateKey priKey;
 	private HashMap<Client, SecretKey> Servers = new HashMap<Client, SecretKey>(30);
 	private final verifyMac mV = new verifyMac();
-	private int rid = 0, seq = 0, wts = 0, acks = 0;
+	private int rid = 0, seq = 0, wts = 0;
 
 
 	private ClientLibrary() throws NoSuchAlgorithmException, NoSuchPaddingException {
@@ -200,29 +200,57 @@ public class ClientLibrary {
 
 
 	public void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-		byte[][] serverReply, replies = new byte[Servers.size() + 1][];
+		byte[][] serversReply = null, replies = new byte[Servers.size() + 1][], bestReply = null;
+		int highestSeq = 0, f = 0, index = 0, acks = 0;
+		byte[] serverPubKey = null;
+
+		// serverReply[0] = reply
+		// serverReply[1] = rid
+		// serverReply[2] = seq
+		// serverReply[3] = hmac
+		// serverReply[4] = signature
+		// serverReply[5] = public key
+
 		try {
 			int i = 0;
 			for (Client c: Servers.keySet()) {
 				String nonce = c.createNonce(pubKey);
 				String concatenation = pubKey + nonce;
-				serverReply = c.checkAccount(pubKey, nonce, mV.createHmac(concatenation, Servers.get(c)), rid, seq);
+				serversReply = c.checkAccount(pubKey, nonce, mV.createHmac(concatenation, Servers.get(c)), rid, seq);
 
-				int srid = Integer.parseInt(new String(serverReply[2]));
-				int sseq = Integer.parseInt(new String(serverReply[3]));
+				int srid = Integer.parseInt(new String(serversReply[1]));
+				int sseq = Integer.parseInt(new String(serversReply[2]));
 
-				if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
+				if(mV.verifyHMAC(serversReply[3], Servers.get(c), new String(serversReply[0], "UTF-8"))
 						&& srid == rid && sseq > seq ) {
-					replies[i] = serverReply[0];
+					replies[i] = serversReply[0];
+					if(sseq > highestSeq) {
+						highestSeq = sseq;
+						index = i;
+						serverPubKey = serversReply[5];
+						bestReply = serversReply;
+					}
 				}
+				else
+					f++;
 				i++;
 			}
-			byte[] decision = quorum(replies);
+			byte[] decision = replies[index];
+			
+
+			for (Client c : Servers.keySet()) {
+				byte[] reply = c.writeBackCheckAccount(bestReply, pubKey.toString(), serverPubKey);
+				if(mV.verifyHMAC(reply, Servers.get(c), "ack"))
+					acks++;
+			}
+			
+			if(acks < 2*f+1)
+				throw new AuthenticationException("No server consensus. Need " + 2*f+1 + " answers, only got " + acks);
 
 			int res = JOptionPane.showConfirmDialog(null, new String(decision, "UTF-8"), "Account Info", 
 					JOptionPane.CANCEL_OPTION,
 					JOptionPane.INFORMATION_MESSAGE);
-			
+
 			if(res == JOptionPane.OK_OPTION){
 				mainMenu("Not doing so well uh? What you wanna do now?");
 				return;
@@ -242,6 +270,7 @@ public class ClientLibrary {
 		Optional<Client> any = Servers.keySet().stream().findAny();
 		List<String> dest_choices = any.get().getPublicKeys(pubKey);
 		Object[] obj = dest_choices.toArray();
+		int acks = 0, f = 0;
 
 		JLabel label_destination = new JLabel("To whom:");
 
@@ -276,18 +305,24 @@ public class ClientLibrary {
 
 					int swts = Integer.parseInt(new String(serverReply[2]));
 					int sseq = Integer.parseInt(new String(serverReply[3]));
+
+					System.out.println("swts = " + swts);
+					System.out.println("sseq = " + sseq);
 					if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
 							&& swts > wts && sseq > seq ) {
 						replies[i] = serverReply[0];
 						acks++;
 					}
+					else
+						f++;
 					i++;
 				}
-				
-				if(acks < (Servers.size() / 2) )
+
+				System.out.println("acks = " + acks + " , f = " + f + " , 2*f+1 = " + (2*f+1));
+				if(acks < (2*f+1) )
 					throw new AuthenticationException("Not enough writes: " + acks);
-				
-				this.acks = 0;
+
+				acks = 0;
 				JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"), "Account Info", 
 						JOptionPane.CANCEL_OPTION,
 						JOptionPane.INFORMATION_MESSAGE); // Initial choice);
@@ -306,8 +341,9 @@ public class ClientLibrary {
 	public void receiveAmountMenu() throws NumberFormatException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
 		byte[][] serverReply = null, replies = new byte[Servers.size() + 1][];
 		Optional<Client> any = Servers.keySet().stream().findAny();
-		List<String> dest_choices = any.get().getPublicKeys(pubKey);
+		List<String> dest_choices = any.get().getPendingList(pubKey);
 		Object[] obj = dest_choices.toArray();
+		int acks = 0, f = 0;
 
 		if(obj.length == 0){
 			JOptionPane.showConfirmDialog(null, "No Pending Transactions",
@@ -320,7 +356,7 @@ public class ClientLibrary {
 			JLabel label_id = new JLabel("Pending List:");
 
 			String choice = JOptionPane.showInputDialog(null, label_id,
-					"SendAmount", JOptionPane.QUESTION_MESSAGE, null, obj, obj[0]).toString();
+					"Receive Amount", JOptionPane.QUESTION_MESSAGE, null, obj, obj[0]).toString();
 
 			System.out.println(choice);
 
@@ -335,18 +371,20 @@ public class ClientLibrary {
 
 						int swts = Integer.parseInt(new String(serverReply[2]));
 						int sseq = Integer.parseInt(new String(serverReply[3]));
+
 						if(mV.verifyHMAC(serverReply[1], Servers.get(c), new String(serverReply[0], "UTF-8"))
 								&& swts > wts && sseq > seq ) {
 							replies[i] = serverReply[0];
 							acks++;
 						}
+						else
+							f++;
 						i++;
 					}
 
-					if(acks < (Servers.size() / 2) )
+					if(acks < (2*f+1) )
 						throw new AuthenticationException("Not enough writes: " + acks);
 
-					this.acks = 0;
 					JOptionPane.showConfirmDialog(null, new String(serverReply[0], "UTF-8"), "Account Info", 
 							JOptionPane.CANCEL_OPTION,
 							JOptionPane.INFORMATION_MESSAGE);
@@ -363,12 +401,16 @@ public class ClientLibrary {
 	}
 
 	public void auditMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-		String[] serverReply;
-		byte[] reply = null;
+		String[] serverReply = null;
+		String reply = null;
 		Optional<Client> any = Servers.keySet().stream().findAny();
 		List<String> dest_choices = any.get().getPublicKeys(pubKey);
 		int highestSeq = seq;
-		
+
+		// serverReply[0] = reply
+		// serverReply[1] = rid
+		// serverReply[2] = seq
+
 		Object[] obj = dest_choices.toArray();
 
 		JLabel label_destination = new JLabel("Audit whom:");
@@ -384,14 +426,20 @@ public class ClientLibrary {
 
 					int srid = Integer.parseInt(serverReply[1]);
 					int sseq = Integer.parseInt(serverReply[2]);
+
 					if(srid >= rid && sseq > seq && sseq > highestSeq) {
 						highestSeq = sseq;
-						reply = serverReply[0].getBytes();
+						reply = serverReply[0];
 					}
 				}
-				byte[] decision = reply;
-				
-				JOptionPane.showConfirmDialog(null, new String(decision),
+				String[] decision = new String[2]; 
+				decision[0] = reply;
+				decision[1] = "" + highestSeq;
+
+				for (Client c : Servers.keySet())
+					c.writeBackAudit(decision, pubKey.toString());
+
+				JOptionPane.showConfirmDialog(null, decision[0],
 						"Auditing " + choice,
 						JOptionPane.PLAIN_MESSAGE,
 						JOptionPane.INFORMATION_MESSAGE);
@@ -471,7 +519,7 @@ public class ClientLibrary {
 		md.update(args.getBytes());
 		return md.digest();
 	}
-	
+
 	private int parseLedger(String Ledger) {
 		return 0;
 		// FIX ME

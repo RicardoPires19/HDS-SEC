@@ -21,7 +21,7 @@ class MySqlCon{
 
 			con = DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=root&useSSL=false");
 
-			String sql = "create database " + dbName + ";"; // No risk of SQL injection since the name is created in the Server.
+			String sql = "CREATE DATABASE IF NOT EXISTS " + dbName + ";"; // No risk of SQL injection since the name is created in the Server.
 			java.sql.Statement s = con.createStatement();
 			s.executeUpdate(sql);
 			System.out.println("Database created successfully...");

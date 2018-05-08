@@ -29,7 +29,7 @@ public interface Client extends Remote {
 	public String createNonce(PublicKey pubKey) throws RemoteException;
 	public List<String> getPublicKeys(PublicKey pubKey) throws RemoteException, SQLException;
 	public List<String> getPendingList(PublicKey pubKey) throws RemoteException, SQLException;
-	byte[] writeBackAudit(String[] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, NumberFormatException, SQLException, AuthenticationException;
-	byte[] writeBackCheckAccount(byte[][] reply, String pubKey, String serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NumberFormatException, SignatureException, SQLException, AuthenticationException;
+	byte[] writeBackAudit(String[] reply, String pubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, SignatureException, NumberFormatException, SQLException, AuthenticationException;
+	byte[] writeBackCheckAccount(byte[][] reply, String pubKey, byte[] serverPubKey) throws RemoteException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, NumberFormatException, SignatureException, SQLException, AuthenticationException;
 	
 }
