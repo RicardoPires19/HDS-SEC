@@ -13,8 +13,10 @@ grant all privileges on AccountData.* to root@localhost;
 
 javac *.java
 
-java -cp "mysql-connector-java-5.1.46.jar:." Server
+java -cp "mysql-connector-java-5.1.46.jar:." Server n
 
-java ClientLibrary localhost
+java ClientLibrary localhost n
+
+// n is the number of servers to be launched.
 
 ```
