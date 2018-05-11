@@ -18,8 +18,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -200,7 +200,7 @@ public class ClientLibrary {
 
 
 	public void checkAccountMenu() throws RemoteException, NumberFormatException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, SignatureException, UnsupportedEncodingException, SQLException{
-		byte[][] serversReply = null, replies = new byte[Servers.size() + 1][], bestReply = null;
+		byte[][] replies = new byte[Servers.size() + 1][], bestReply = null;
 		int highestSeq = 0, f = 0, index = 0, acks = 0;
 		byte[] serverPubKey = null;
 
@@ -212,17 +212,36 @@ public class ClientLibrary {
 		// serverReply[5] = public key
 
 		try {
+
+			List<byte[][]> replyCollection = Servers.keySet()
+					.parallelStream()
+					.map(entry -> {
+						try {
+							String nonce = entry.createNonce(pubKey);
+							String concatenation = pubKey + nonce;
+							return entry.checkAccount(pubKey, nonce, mV.createHmac(concatenation, Servers.get(entry)), rid, seq);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						return null;
+					}).collect(Collectors.toList());
+			System.out.println(replyCollection.toString());
 			int i = 0;
-			for (Client c: Servers.keySet()) {
-				String nonce = c.createNonce(pubKey);
-				String concatenation = pubKey + nonce;
-				serversReply = c.checkAccount(pubKey, nonce, mV.createHmac(concatenation, Servers.get(c)), rid, seq);
+			for (byte[][] serversReply : replyCollection) {
+
+				boolean b = false;
+				for (Client c : Servers.keySet()) {
+					if(mV.verifyHMAC(serversReply[3], Servers.get(c), new String(serversReply[0], "UTF-8")))
+						b = true;
+				}
+
+				if(b == false)
+					break;
 
 				int srid = Integer.parseInt(new String(serversReply[1]));
 				int sseq = Integer.parseInt(new String(serversReply[2]));
 
-				if(mV.verifyHMAC(serversReply[3], Servers.get(c), new String(serversReply[0], "UTF-8"))
-						&& srid == rid && sseq > seq ) {
+				if(srid == rid && sseq > seq ) {
 					replies[i] = serversReply[0];
 					if(sseq > highestSeq) {
 						highestSeq = sseq;
@@ -236,14 +255,14 @@ public class ClientLibrary {
 				i++;
 			}
 			byte[] decision = replies[index];
-			
+
 
 			for (Client c : Servers.keySet()) {
 				byte[] reply = c.writeBackCheckAccount(bestReply, pubKey.toString(), serverPubKey);
 				if(mV.verifyHMAC(reply, Servers.get(c), "ack"))
 					acks++;
 			}
-			
+
 			if(acks < 2*f+1)
 				throw new AuthenticationException("No server consensus. Need " + 2*f+1 + " answers, only got " + acks);
 
@@ -476,22 +495,6 @@ public class ClientLibrary {
 		}
 	}
 
-	private byte[] quorum(byte[][] serverReply) {
-		HashMap<byte[], Integer> replies = new HashMap<byte[], Integer>(serverReply.length);
-
-		for (byte[] bs : serverReply) {
-			replies.merge(bs, 1, Integer::sum);
-		}
-
-		Map.Entry<byte[], Integer> max = null;
-		for (Map.Entry<byte[], Integer> entry : replies.entrySet()) {
-			if(max == null || entry.getValue() > max.getValue())
-				max = entry;
-		}
-
-		return max.getKey();
-	}
-
 	public static byte[] createSignature(String input,PrivateKey privKey) {  //input can be both a nonce or a HMAC
 		byte[] data;
 		try {
@@ -518,11 +521,6 @@ public class ClientLibrary {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		md.update(args.getBytes());
 		return md.digest();
-	}
-
-	private int parseLedger(String Ledger) {
-		return 0;
-		// FIX ME
 	}
 
 }

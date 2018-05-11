@@ -2,6 +2,8 @@ package main;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
@@ -53,8 +55,9 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 	private final verifyMac macVerifier = new verifyMac();
 	private final SecureRandom random;
 	private HashMap<String, Integer> timeStamps = new HashMap<String, Integer>(20);
+	private final SafeVerifier ss;
 
-	public ServerLibrary(String dbName) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException{
+	public ServerLibrary(String dbName) throws NoSuchAlgorithmException, NoSuchPaddingException, KeyStoreException, CertificateException, IOException, NoSuchProviderException, NotBoundException{
 		super();
 		akg = new AsymmetricKeyGenerator(512, dbName);
 		ac = new AsymmetricCryptography();
@@ -68,6 +71,9 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		Sessions = new HashMap<String, Calendar>(20);
 		random = new SecureRandom();
 		random.setSeed("RANDOMseeds".getBytes());
+		
+		String url = new String("rmi://localhost/SafeServer");
+		this.ss = (SafeVerifier)Naming.lookup(url);
 	}
 
 	private boolean verifySession(PublicKey pubKey) {
@@ -220,8 +226,18 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		} catch (Exception e) {
 			throw new AuthenticationException("Could not authenticate");
 		}
-
-
+		
+		ss.sendInput(""+rid+seq, akg.getPublicKey(), createSignature(""+rid+seq));
+		Thread.sleep(100); // crude solution to make sure the verifier gets as many inputs as possible
+		byte[][] check = ss.verifyInput();
+		
+		PublicKey pbk = KeyFactory
+				.getInstance("RSA")
+				.generatePublic(new X509EncodedKeySpec(check[1]));
+		if(!verifySignature(pbk, "ack", check[0]))
+			throw new AuthenticationException("No consensus on input");
+		
+		
 		int balance = db.getBalance(pubKey.toString()); //returns int
 		serverReply = serverReply + "Your balance is:\n "+ Integer.toString(balance);
 		List<String> result = db.getIncomingPendingTransfers(pubKey.toString()); //returns a list of all pending request
@@ -268,6 +284,8 @@ public class ServerLibrary extends UnicastRemoteObject implements Client{
 		if(!macVerifier.verifyHMAC(hmac, ks.getKey(src.toString(), PASSWORD), concatenation))
 			throw new AuthenticationException("Hmac is wrong");
 
+//		ss.sendInput(src+dst+amount+wts+seq, src, signature);
+//		ss.verifyInput();
 
 		Signature sig = Signature.getInstance("SHA1withRSA"); //verifies the signature of the nonce
 		sig.initVerify(src);

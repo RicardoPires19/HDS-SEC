@@ -6,6 +6,7 @@ public class Server{
 		int	n = Integer.parseInt(args[0]);
 		java.rmi.registry.LocateRegistry.createRegistry(1099);
 
+		Naming.rebind("rmi://localhost/SafeServer", new SafeServer(n));
 		for (int i = 0; i < n; i++) {
 			Naming.rebind("rmi://localhost/Server" + i, new ServerLibrary("Server" + i));
 		}
